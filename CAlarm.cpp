@@ -15,7 +15,7 @@
 
 CAlarmSensor::CAlarmSensor()
 {
-    m_pBerechne = NULL;
+    m_pBerechne  = NULL;
     m_bState = true;
     m_bLastState = true;
     m_bMust = true;
