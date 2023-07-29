@@ -30,10 +30,11 @@ public:
     void SetLastState();
     void SetState(int state);
     bool GetStateE();
-    bool GetStateA();    
+    bool GetStateA(); 
+    bool GetStateW();   
 private:
     int m_iValue;
-    int m_bLastState;
+    int m_iLastState;
 };
 
 class CSecTimer
@@ -166,6 +167,12 @@ class COperIntegerA:public COperInteger
 {
     virtual int resultInt();
 };
+// Integer Wechsel
+class COperIntegerW:public COperInteger
+{
+    virtual int resultInt();
+};
+
 //
 //  Heizkörper
 //

@@ -167,7 +167,7 @@ int COperW::resultInt()
 CInteger::CInteger()
 {
     m_iValue = 0;
-    m_bLastState = false;
+    m_iLastState = 0;
 }
 int CInteger::GetState()
 {
@@ -180,15 +180,15 @@ void CInteger::SetState(int state)
 void CInteger::SetLastState()
 {
     if(GetState())
-        m_bLastState = true;
+        m_iLastState = true;
     else
-        m_bLastState = false;
+        m_iLastState = false;
 }
 bool CInteger::GetStateE()
 {
     bool res = false;
 
-    if(m_iValue && !m_bLastState)
+    if(m_iValue && !m_iLastState)
         res = true;
     return res;
 }
@@ -196,10 +196,18 @@ bool CInteger::GetStateA()
 {
     bool res = false;
 
-    if(!m_iValue && m_bLastState)
+    if(!m_iValue && m_iLastState)
         res = true;
     return res;
-}   
+}  
+bool CInteger::GetStateW()
+{
+    bool res = false;
+
+    if(m_iValue != m_iLastState)
+        res = true;
+    return res;
+} 
 //
 // Operand Integer
 //
@@ -230,6 +238,13 @@ int COperIntegerA::resultInt()
     int res = 0;
 
     if(m_pInteger->GetStateA())
+        res = 1;
+    return res;
+}
+int COperIntegerW::resultInt()
+{
+    int res = 0;
+    if(m_pInteger->GetStateW())
         res = 1;
     return res;
 }

@@ -388,6 +388,9 @@ void CConfigCalculator::number()
                 case 'a':
                     pOper = (COperInteger *) new COperIntegerA;
                     break;
+                case 'w':
+                    pOper = (COperInteger*) new COperIntegerW;
+                    break;
                 default:
                     pOper = new COperInteger ();
                     break;
