@@ -1,0 +1,20 @@
+{
+    "files.associations": {
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "vector": "cpp",
+        "array": "cpp",
+        "functional": "cpp",
+        "memory": "cpp",
+        "tuple": "cpp",
+        "fstream": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "ostream": "cpp",
+        "numeric": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "utility": "cpp"
+    },
+    "C_Cpp.errorSquiggles": "Disabled"
+}
