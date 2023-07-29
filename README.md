@@ -1,2 +1,2 @@
 # ProWo
-ProWo - smart home server
+ProWo - smart home server on raspberry pi
