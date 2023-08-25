@@ -651,6 +651,9 @@ int COperUhr::resultInt()
             case 2:
                 iRet = m_pUhr->getDatumTag();
                 break;
+            case 3: // Stundenwechsel
+                iRet = m_pUhr->StundenTakt();
+                break;
             default:
                 break;
         }

@@ -807,7 +807,7 @@ void CBrowserSocket::VerwaltZaehler(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     CZaehler * pZaehler;
     double dblZaehlerStand, dblOffset, dblVerbrauch;
     string str;
-    struct tm pt;
+    struct tm pt = {0};
     
     ReadBuf(buf, ';');
     while(bTrue) 
@@ -855,7 +855,7 @@ void CBrowserSocket::VerwaltZaehler(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                 Send(str.c_str());
                 bTrue = false;
                 break;
-            case '2': 
+            case '2': // Offset und Datum werden übernommen, wenn kein Offset dann wird errechnet
                 pZaehler = m_pIOGroup->GetZaehler(iNiv2);
                 ReadBuf(buf, ';');
                 strptime(buf, "%Y-%m-%dT", &pt);

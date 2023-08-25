@@ -456,7 +456,9 @@ void CConfigCalculator::number()
                     i = 1;
                 else if(strncmp(text, "DATUM", 5)== 0 && strlen(text) == 5)
                     i = 2;
-                else 
+                else if(strncmp(text, "STDW", 4) == 0 & strlen(text) == 4)
+                    i = 3;
+                else
                     i = 0;
                 if(i)
                 {
