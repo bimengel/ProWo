@@ -122,7 +122,9 @@ void CAlarmClock::LesDatei()
     bool bSnooze, bActivated, bSeparatur;
 
     pReadFile = new CReadFile;
-    if(pReadFile->OpenRead (pProgramPath, 15))
+    // JEN 01.09.23
+    // es wird nichts eingelesen wenn die Datei ProWo.alarmclock nicht existiert
+    if(pReadFile->OpenRead (pProgramPath, 15, 0, 1))
     {
 		while(pReadFile->ReadLine())
 		{

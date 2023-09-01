@@ -1781,7 +1781,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             }
             else if(strncmp(buf, "TQS3CHANGE", 10) == 0)
             {
-            if(m_iAnzSensor  < m_iMaxAnzSensor)
+                if(m_iAnzSensor  < m_iMaxAnzSensor)
                 {
                     address = m_pReadFile->ReadNumber ();
                     m_pReadFile->ReadBuf(buf, ',');
@@ -1870,7 +1870,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             }
             else if(strncmp(buf, "TH1CHANGE", 10) == 0)
             {
-            if(m_iAnzSensor < m_iMaxAnzSensor)
+                if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
                     address = m_pReadFile->ReadNumber ();
                     m_pReadFile->ReadBuf(buf, ',');

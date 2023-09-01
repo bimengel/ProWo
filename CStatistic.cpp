@@ -57,7 +57,10 @@ void CStatistic::LesDatei(int nr)
             i = 0;
             break;
     }
-    if(i && pReadFile->OpenRead (pProgramPath, i, nr))
+    // JEN 1.09.23
+    // iTest = 1 angefügt, denn es wird getestet ob die Datei im
+    // Standardverzeichnis existiert !!
+    if(i && pReadFile->OpenRead (pProgramPath, i, nr, 1))
     {
         while(!bEnd)
         {	

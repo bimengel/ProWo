@@ -256,7 +256,12 @@ int CReadFile::OpenRead(char *pProgramPath, int type, int nr, int iTest)
     strName = GetFileName(pProgramPath, type, nr);
     m_fp = fopen(strName.c_str(), "r");
 
-    if(!iTest && m_fp == NULL && type != 5 && type != 11 && type != 12 && type != 15)
+    // JEN 01.09.23 folgende Tests entfernt
+    // type != 5 (Zählerdaten) 
+    // type != 12 (Wetterdaten)
+    // type != 15 (Wecker)
+    // type != 11 (Daten der History)
+    if(!iTest && m_fp == NULL)
     {   
         m_strError= "Can't open file for reading " + strName;
         syslog(LOG_ERR, m_strError.c_str());
