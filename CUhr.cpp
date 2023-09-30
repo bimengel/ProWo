@@ -385,7 +385,7 @@ CUhr::CUhr()
                         iUeb = 1;
                     break;
                 case BUTTONOK:
-                    if(++iTime > 3)
+                    if(++iTime > 2)
                     {
                         iRet = 0;
                         LCD_Clear();
@@ -408,8 +408,11 @@ CUhr::CUhr()
                     break;
             }
         }
-        if(++iAbbruch > 600)
+        if(++iAbbruch > 180) // JEN 30.09.23 von 10 min auf 3 min reduziert
+        {
             iRet = 0;
+            LCD_Clear();
+        }    
     }
 
     m_uhrzeit = time(NULL);
@@ -651,8 +654,14 @@ int COperUhr::resultInt()
             case 2:
                 iRet = m_pUhr->getDatumTag();
                 break;
-            case 3: // Stundenwechsel
+            case 3: // Minutenwechsel
+                iRet = m_pUhr->MinutenTakt();
+                break;
+            case 4: // Stundenwechsel
                 iRet = m_pUhr->StundenTakt();
+                break;
+            case 5: // Tagwechsel
+                iRet = m_pUhr->TagesTakt();
                 break;
             default:
                 break;
