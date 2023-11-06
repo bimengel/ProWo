@@ -275,6 +275,19 @@ void CHue::InsertFifo(CHueProperty * pHueProperty)
 }
 
 //
+//  CHueProperty
+//
+CHueProperty::CHueProperty()
+{
+    m_iNr = 0;
+    m_iTyp = 0;
+    m_iID = 0;
+    m_iState = 0;
+    m_iBrightness = 0;
+    m_iSource = 0; 
+}
+
+//
 //  Hue Entity
 //
 CHueEntity * CHue::GetAddress(int nr)

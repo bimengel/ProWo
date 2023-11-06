@@ -16,6 +16,7 @@
 
 class CHueProperty {
 public:
+    CHueProperty();
     int m_iNr;
     int m_iTyp;         // Lampe oder Gruppe
     int m_iID;
