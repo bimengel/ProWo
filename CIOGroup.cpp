@@ -829,7 +829,7 @@ void CIOGroup::InitGroup()
             str3 = "incor. separator";
             break;
         case 63:
-            str3 = "inc line";
+            str3 = "incor. line";
             break;
         case 64:
             str3 = "incorrect number";
@@ -985,7 +985,7 @@ void CIOGroup::InitGroup()
             str3 = "HUE not defined";
             break;
         case 115:
-            str3 = "noth. after Diff";
+            str3 = "noth. after DIFF";
             break;
         case 116:
             str3 = "wrong sensor no!";
@@ -1037,6 +1037,9 @@ void CIOGroup::InitGroup()
             break;
         case 132:
             str3 = "ProWo.heizung !!";
+            break;
+        case 133:
+            str3 = "DIFF not last";
             break;
         default:
             str3 = "error not def.!";
@@ -4002,7 +4005,7 @@ void CIOGroup::LesHistory(char * pProgrammPath)
                     if(!bRet)
                         m_pReadFile->Error(5);
                     if(!m_pReadFile->ReadSeparator())
-                        m_pReadFile->Error(63);
+                        m_pReadFile->Error(62);
                     if(bLast)
                         break;
                 }
@@ -4012,7 +4015,13 @@ void CIOGroup::LesHistory(char * pProgrammPath)
                 m_pReadFile->Error(113);
         }
         else
-            break;
+        {
+            if(!bLast)
+                m_pReadFile->Error(133);
+            else
+                break;
+        }
+
     }
     m_pReadFile->Close();
     delete m_pReadFile;  

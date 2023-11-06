@@ -237,8 +237,7 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
                 pEWAusg[i] = -1;
             for(i=0; i < m_iAnzAusg / PORTANZAHLCHANNEL; i++)
                 pAusg[i] = 0;
-            // JEN 01.09.23
-            // iTest angefügt
+
             if(rf.OpenRead(pProgramPath, 11, iTag - m_iDiffTage, 1) && rf.SetFilePos(m_lReadFilePos))
             {
                 while(true)
@@ -344,8 +343,6 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
         pthread_mutex_unlock(&m_mutexHistoryReadFifo);
         if(i < 3 && m_lReadFilePos >= 0)
         {
-            // JEN 01.09.23
-            // iTest angfügt
             if(rf.OpenRead(pProgramPath, 11, iTag - m_iDiffTage, 1) && rf.SetFilePos(m_lReadFilePos))
             {
                 for(; i < 10; i++)
@@ -437,7 +434,7 @@ bool CHistory::SetDiffTage(int iDiff)
             pFile = new CReadFile;
             pFile->OpenWriteExisting(pProgramPath, 10, 0);
             pFile->SetFilePos(m_lFilePosAfterDiff);
-            str = "DIFF:" + to_string(iDiff);
+            str = "DIFF:" + to_string(iDiff) + ";";
             pFile->WriteLine(str.c_str());
             pFile->Close();
             delete pFile;
