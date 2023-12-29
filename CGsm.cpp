@@ -200,7 +200,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 					m_iSignal = atoi((char *)(&m_chEmpf[iPos]));
                     m_iState = GSMWAITREGISTER;
 					m_iSubState = GSMREGISTERED;
-                    iSend = sprintf((char *)m_chSend, (char *)"AT+CREG?");
+                    // JEN 28.12.23 iSend = sprintf((char *)m_chSend, (char *)"AT+CREG?");
 				}
 				else
 				{
@@ -300,7 +300,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 				// Senden der SMS
 			case GSMSENDGSMNR:
 				iSend = sprintf((char *)m_chSend, "%s", 
-					                m_pSendSMS->m_strSMSText.c_str());
+					                m_pSendSMS->m_strSMSText.c_str());               
 				m_chSend[iSend++] = 0x1A;
 				m_iSubState = GSMSENDSMSTEXT;
 				break;
@@ -443,8 +443,13 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 			{
 				m_pSendSMS = &m_SendFifo.front();
 				m_iSubState = GSMSENDGSMNR;
-				iSend = sprintf((char *)m_chSend, "AT+CMGS=\"%s\"", 
+				iSend = sprintf((char *)m_chSend, "AT+CMGS=\"%s\",", 
 		            					m_pSendSMS->m_strGSM.c_str());
+                if(m_pSendSMS->m_strGSM.at(0) == '+')
+                    iSend += sprintf((char *)&m_chSend[iSend], "145");
+                else
+                    iSend += sprintf((char *)&m_chSend[iSend], "129"); 
+                iSend += sprintf((char *)&m_chSend[iSend], "\n");
 			}
             pthread_mutex_unlock(&m_mutexGsmSendFifo);             
 		}
