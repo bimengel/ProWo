@@ -192,6 +192,7 @@ int main(int argc, char *argv[])
         lDelay = (finish.tv_nsec - start.tv_nsec)/1000; // nanosekunden in microsekunden 
         if(lDelay > ext_iMaxZykluszeit)
             ext_iMaxZykluszeit = lDelay;
+
     }
 
     LCD_Clear ();

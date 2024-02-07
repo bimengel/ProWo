@@ -23,7 +23,7 @@ ProWo is free software: you can redistribute it and/or modify it
 struct EWAusgEntity
 {
     int iNr;    // channel*256 + button
-    int iSource;   // 1 = Parameter, 2 = History
+    int iSource;   // 1 = Parameter, 2 = History, 3 = Handsteuerung (nicht getestet)
 };
 //
 //  CBerechneBase wird eingesetzt:

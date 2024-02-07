@@ -363,7 +363,8 @@ string CReadFile::GetFileName(char *pProgramPath, int typ, int nr)
     //      = 15, Alarm Clock (Wecker)
     //      = 16 Standardverzeichnis für copyFile Zähler und Datei lesen 
     //      = 17 Standardverzeichnis für copyFile Wetterstation und Datei lesen
-    
+    //      = 18 EasyWave Eingangstabelle
+
     string strName;
 
     strName.clear();
@@ -443,7 +444,10 @@ string CReadFile::GetFileName(char *pProgramPath, int typ, int nr)
             m_pUhr->getUhrzeitStruct(&pt);
             strName =  "Standard/WSDaten" + to_string(nr) + ".dat";
         }
-        break;    
+        break;  
+    case 18:
+        strName = "Standard/ProWo.EWTabelle";
+        break;
     default:
         break;
     }

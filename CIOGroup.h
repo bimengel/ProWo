@@ -71,6 +71,7 @@ protected:
     int m_EWUSBEingAnz; // Anzahl USB Eingänge 
     int m_EWUSBAusgAnz; // Anzahl USB Ausgänge
     char *m_pEWEing;	// Zustand der EWEingänge
+    int m_iEWUSBSetLearnChannel;
     //			Bit 0 : Zustandeinzeltaster A
     //			Bit 1 : Zustandeinzeltaster B
     //			Bit 2 : Zustandeinzeltaster C
@@ -150,7 +151,11 @@ public:
     void SetSEingStatus(int nr, bool bState);
     char * GetSEingAddress(int nr);
     char * GetSEingLastAddress(int nr);
-    int GetEWAnz();
+    int GetEWBoardAnz();
+    int GetEWUSBEingAnz();
+    int GetEWUSBAusgAnz();
+    int GetEWEingTotAnz();
+    int GetEWAusgTotAnz();
     char * GetEWEingAddress(int nr);
     char * GetEWEingLastAddress(int nr);
     char * GetEWAusgAddress(int nr);
@@ -181,9 +186,9 @@ public:
     void BerechneParameter(int iTime);
     void EW_Reset();
     void EW_ResetChannel(int channel);
-    int EW_GetAnzahlChannel();
     int EW_SetLearn(int channel);
-    int EW_Transmit(int channel, int button);
+    void EW_AusgSend(int channel, int button);
+    int EWBoard_Transmit(int channel, int button);
     void EW_GetBezeichnung(char *ptr, int channel);
     void Les_IOGroup();
     int Write_Ausg(CBoardAddr *addr, int value);
@@ -197,7 +202,7 @@ public:
     
 protected:
     int readAnzeige();
-    bool EW_TransmitFinish(int channel);
+    bool EWBoard_TransmitFinish(int channel);
     void ReadConfig(char *pProgramPath);
     void PreReadConfig(char *pProgramPath);
     void LesParam(char *pProgramPath);

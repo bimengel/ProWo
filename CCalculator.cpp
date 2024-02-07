@@ -199,7 +199,7 @@ void CConfigCalculator::number()
         // Easywave Eingänge
         if(strncmp(text, "FE", 2) == 0 && strlen(text) == 2)
         {	
-            if(nr <= m_pIOGroup->GetEWAnz())
+            if(nr <= m_pIOGroup->GetEWBoardAnz() + m_pIOGroup->GetEWUSBEingAnz())
             {   
                 COper *pOper;
                 char ch;

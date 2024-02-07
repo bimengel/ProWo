@@ -33,10 +33,8 @@ typedef unsigned char BYTE;
 #include <map>
 #include <queue>    
 #include <vector>
-#include <termios.h>
 #include "curl/curl.h"
 #include <mpd/client.h>
-#include "CSerial.h"
 #include "gpiolib.h"
 #include "CRS485.h"
 #include "CModBus.h"
@@ -62,11 +60,13 @@ typedef unsigned char BYTE;
 #include "CBrowserMenu.h"
 #include "CAlarm.h"
 #include "CGsm.h"
+#include "CSerial.h"
 #include "CIOGroup.h"
 #include "CCalculator.h"
 #include "CLCDDisplay.h"
 #include "CKeyBoard.h"
 #include "CBrowserSocket.h"
+
 
 extern char *pProgramPath;
 extern bool bRunProgram;

@@ -14,14 +14,14 @@
 #define MODDATUM		2
 
 #define SUBNIVEMPFANG 		101
-#define SUBNIVSENDEN 		102
+#define SUBNIVEWSENDEN 		102
 #define SUBNIVHANDAUSG		103
 #define SUBNIVSIMEING		104
 #define SUBNIVSIMSEING		105
 #define SUBNIVSIMEWEING		106
 
 #define EWRESET			201
-#define EWRESETCHANNEL		202
+#define EWRESETCHANNEL	202
 #define EWANLERNEN		203
 #define EWLERNEN		204
 #define EWERKENNEN		205
@@ -63,14 +63,14 @@ struct _menu FunkSenden[] = {
     { "", NULL, 0, 0 }
 };
 
-// Niveai 3 Hauptmenu - Handsteuerung - Ausgang
+// Niveau 3 Hauptmenu - Handsteuerung - Ausgang
 struct _menu HandAusg[] = {
     { "  Aus", NULL, HANDAUSG, 0 },
     { "  Ein", NULL, HANDAUSG, 0 },
     { "", NULL, 0, 0 }
 };
 
-// Nivea 3 Hauptmenu - Simulation - Eingang
+// Niveau 3 Hauptmenu - Simulation - Eingang
 struct _menu SimEing[] = {
     { "  Aus", NULL, SIMEING, 0 },
     { "  Ein", NULL, SIMEING, 0 },
@@ -118,7 +118,7 @@ struct _menu Funkeinstellung[] = {
 // Niveau 2 Hauptmenu - Handsteuerung
 struct _menu Handsteuerung[] = {
     { "Ausgang", HandAusg, SUBNIVHANDAUSG, 0 },
-    { "Funkausg.", FunkSenden, SUBNIVSENDEN, 0 },
+    { "Funkausg.", FunkSenden, SUBNIVEWSENDEN, 0 },
     { "", NULL, 0, 0 }
 };
 
@@ -245,16 +245,20 @@ void CLCDDisplay::InitEingabe(int ID)
         }
         break;
     case SUBNIVEMPFANG:
-    case SUBNIVSENDEN:
         strNummer[0].wert = 1;
         strNummer[0].min = 1;
-        strNummer[0].max = m_pIOGroup->EW_GetAnzahlChannel();
-            break;
+        strNummer[0].max = m_pIOGroup->GetEWEingTotAnz();
+        break;    
+    case SUBNIVEWSENDEN:
+        strNummer[0].wert = 1;
+        strNummer[0].min = 1;
+        strNummer[0].max = m_pIOGroup->GetEWAusgTotAnz();
+        break;
     case SUBNIVHANDAUSG:
         strNummer[0].wert = 1;
         strNummer[0].min = 1;
         strNummer[0].max = m_pIOGroup->GetAusgAnz();
-            break;
+        break;
     case SUBNIVSIMEING:
         strNummer[0].wert = 1;
         strNummer[0].min = 1;
@@ -268,7 +272,7 @@ void CLCDDisplay::InitEingabe(int ID)
     case SUBNIVSIMEWEING:
         strNummer[0].wert = 1;
         strNummer[0].min = 1;
-        strNummer[0].max = m_pIOGroup->GetEWAnz();
+        strNummer[0].max = m_pIOGroup->GetEWEingTotAnz();
             break;
     default:
         break;
@@ -291,8 +295,12 @@ void CLCDDisplay::BeendeEingabe()
 {
     switch(m_niv.ID) {
     case EWANLERNEN:
-        m_pIOGroup->EW_Transmit(strNummer[0].wert, 
-                Hauptmenu[m_niv.niv1-1].menu[m_niv.niv2-1].menu[m_niv.niv3-1].Nummer);
+        {
+            int channel, button;
+            channel = strNummer[0].wert;
+            button = Hauptmenu[m_niv.niv1-1].menu[m_niv.niv2-1].menu[m_niv.niv3-1].Nummer;
+            m_pIOGroup->EW_AusgSend(channel, button); 
+        }
         break;
     case MODUHRZEIT:
         m_pUhr->setTime(struhr[0].wert, struhr[1].wert);
@@ -468,7 +476,7 @@ int CLCDDisplay::VerwaltMenuEingabe(int button)
         strnum = strdatum;
         break;
     case SUBNIVEMPFANG:
-    case SUBNIVSENDEN:
+    case SUBNIVEWSENDEN:
     case SUBNIVHANDAUSG:
     case SUBNIVSIMEING:
     case SUBNIVSIMSEING:

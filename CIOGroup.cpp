@@ -49,9 +49,9 @@
 // bOK, nur auf true beim Ersten Aufruf
 //
 
-void CIOGroup::Control(bool bOK)
+void CIOGroup::Control(bool bStart)
 {
-    int i, j;
+    int i, iInt, j;
     bool bWriteHistory = false;
     bool bSekundenTakt = false;
     bool bStundenTakt = false;
@@ -67,8 +67,12 @@ void CIOGroup::Control(bool bOK)
     // Uhr aktualisieren
     m_pUhr->aktUhr();    
 
-    j = check_gpio(18);
-    if(bOK || j)
+    // Easywave über USB-Stick
+    if(m_pEWUSBSerial)
+        bBerechne = m_pEWUSBSerial->Control(&m_iEWUSBSetLearnChannel);
+
+    iInt = check_gpio(18);
+    if(bStart || iInt)
     {   // beim Aufstarten und wenn sich KEIN INT ansteht
         // (INT steht an wenn sich ein Eingang, HW oder Funk, geändert hat)
         // m_iControl wird bei jedem Durchlauf wo ein INT anstand um eine Einheit erhöht
@@ -153,7 +157,7 @@ void CIOGroup::Control(bool bOK)
         }
 
         // die Berechnung erfolgt einmal pro Minute
-        if(m_pUhr->MinutenTakt() || bOK)
+        if(m_pUhr->MinutenTakt() || bStart)
         {
             bBerechne = true;
             bMinutenTakt = true;
@@ -216,7 +220,7 @@ void CIOGroup::Control(bool bOK)
             m_iControl++;
       
     }
-    if(bOK)	// Beim Aufstarten werden alle Eingänge eingelesen
+    if(bStart)	// Beim Aufstarten werden alle Eingänge eingelesen
         LesAlleEing ();
     if(m_iTest == 10)
     {
@@ -260,7 +264,7 @@ void CIOGroup::Control(bool bOK)
     }
     if(bBerechne)
         m_bBerechne = true;
-    if((m_bBerechne || bOK) && !m_bHandAusg)
+    if((m_bBerechne || bStart) && !m_bHandAusg)
     {
         // Hier werden alle Berechungen bezüglich des Zustandes der Merker,
         // Ausgänge, Timer und EasyWaveaus- und eingänge berechnet
@@ -270,7 +274,7 @@ void CIOGroup::Control(bool bOK)
     m_bBerechne = false;
     pthread_mutex_unlock(&ext_mutexNodejs);
     
-    if(bOK) // Programm startet
+    if(bStart) // Programm startet
     {	// Ausgänge anstellen
         for(i=0; i<m_AusgAnz / PORTANZAHLCHANNEL;i++)	
         {
@@ -282,7 +286,6 @@ void CIOGroup::Control(bool bOK)
 
     if(bBerechne)
     {   
-        // Ausgänge anstellen, nur wenn auch eine Änderung
         // Für alle Ausgänge den aktuellen Wert als letzten setzen
         if(m_pHistory && m_pHistory->GetDiffTage())        
         {
@@ -304,6 +307,7 @@ void CIOGroup::Control(bool bOK)
                 m_pcAusg[i] = 0;
             SetAusgStatus(m_iAusgTest, true);
         }  
+        // Ausgänge anstellen, nur wenn auch eine Änderung
         for(i=0; i < m_AusgAnz / PORTANZAHLCHANNEL; i++)
         {
             if(m_pcAusgLast[i] != m_pcAusg[i])
@@ -312,20 +316,17 @@ void CIOGroup::Control(bool bOK)
                 m_pcAusgLast[i] = m_pcAusg[i];
                 bWriteHistory = true;
             }
-        }
-        
+        }        
         // alle SMS Eingänge auf 0 setzen !!
         if(m_pGsm != NULL)
             m_pGsm->InitSMSEmpf(); 
     }
-    
     if(bWriteHistory && m_pHistory != NULL)
         m_pHistory->Add(m_pcAusg);
-
     //
     //  EasyWave-Protokolle versenden
     //
-    if(!m_iLastEWButton && !m_EWAusgFifo.empty())
+    if(!m_EWAusgFifo.empty())
     {	int channel, button;
         struct EWAusgEntity EWAusg;
         bool bSend = true;
@@ -342,12 +343,30 @@ void CIOGroup::Control(bool bOK)
         }            
         if(bSend)
         {
-            if(EW_TransmitFinish(channel))
+            if(channel > 0 && channel <= m_EWAnzBoard * EWANZAHLCHANNEL)
+            {   
+                if(!m_iLastEWButton) // Ist noch ein Taster gedrückt
+                {
+                    if(EWBoard_TransmitFinish(channel))
+                        EWBoard_Transmit(channel, button);		
+                    else
+                        bSend = false;
+                }
+                else
+                    bSend = false;
+            }
+            else if(channel > m_EWAnzBoard * EWANZAHLCHANNEL && channel <= GetEWAusgTotAnz())
             {
-                EW_Transmit(channel, button);		
+                if(!m_pEWUSBSerial->GetCode()) // isty noch ein Taster gedrückt?
+                    m_pEWUSBSerial->Transmit(channel - m_EWAnzBoard*EWANZAHLCHANNEL, button);
+                else
+                    bSend = false;
+            }
+            if(bSend)
+            {
                 m_EWAusgFifo.pop();
                 if(m_pHistory != NULL)
-                    m_pHistory->Add(EWAusg.iNr);
+                    m_pHistory->Add(EWAusg.iNr);                
             }
         }
         else
@@ -383,7 +402,7 @@ void CIOGroup::BerechneParameter(int iTime)
 
     // Für alle EWEAxx, EWEBxx, EWECxx und EWEDxx Eingänge Status auf 0 setzen
     // Der Test auf den Wert entspricht dann einer Flanke
-    res = GetEWAnz();
+    res = GetEWEingTotAnz();
     for(i=0; i < res; i++)
         m_pEWEingLast[i] = m_pEWEing[i];
 
@@ -472,9 +491,10 @@ void CIOGroup::Les_IOGroup()
         m_pcEing[i] = gpio1;
     }
     
+    // Easywave über boards
     for(i=0; i < m_EWAnzBoard; i++)
     {
-        if(EW_TransmitFinish((i+1)*EWANZAHLCHANNEL))
+        if(EWBoard_TransmitFinish((i+1)*EWANZAHLCHANNEL))
             ret += EW_Received(i);
     }
 }
@@ -1046,8 +1066,35 @@ void CIOGroup::InitGroup()
         case 135:
             str3 = "EWUSB Ausg wrong";
             break;
-        case 136:
+        case 136: 
             str3 = "Only one EW USB";
+            break;
+        case 137: // 136 + 1
+            str3 = "EWUSB 2 defin.";
+            break;
+        case 138: // 136 + 2
+            str3 = "EWUSB no port";
+            break;
+        case 139: // 136 + 3
+            str3 = "EWUSB no tty";
+            break;
+        case 140:   // 136 + 4
+            str3 = "EWUSB bad baud";
+            break;
+        case 141: // 136 + 5
+            str3 = "EWUSB bad bits";
+            break;
+        case 142: // 136 + 6
+            str3 = "EWUSB bad stops";
+            break;
+        case 143: // 136 + 7
+            str3 = "EWUSB bad parity";
+            break;
+        case 144: 
+            str3 = "Multiple from 8!";
+            break;
+        case 145:
+            str3 = "Bad channel nbr!";
             break;
         default:
             str3 = "error not def.!";
@@ -1243,46 +1290,49 @@ void CIOGroup::LesParam(char *pProgramPath)
                     type = 3;
             }
             else if(str.compare("FA") == 0 || str.compare("FE") == 0)
-            {	// EasyWave Ausgänge oder Eingänge
-                if(nbre < 1 || nbre > GetEWAnz()) // Ein- und Ausgang identisch
-                    m_pReadFile->Error(12);
+            {	// EasyWave Ausgänge
+                if(str.compare("FA") == 0)
+                {   
+                    if(nbre < 1 || nbre > GetEWAusgTotAnz()) 
+                        m_pReadFile->Error(12);  
+                    type = 4;   // Ausgänge                                          
+                }
                 else
                 {
-                    if(str.compare("FA") == 0) 
-                        type = 4; // Ausgänge
-                    else
-                        type = 5; // Eingänge
-                    // EW ouput noch A oder C lesen
-                    strEW = m_pReadFile->ReadAlpha ();
-                    if(strEW.length() == 1)
-                    {	cEW = strEW.at(0);
-                        switch(cEW) {
-                        case 'A':
-                            cEW = 0x01;
-                            break;
-                        case 'B':
-                            cEW = 0x02;
-                            break;
-                        case 'C':
-                            cEW = 0x04;
-                            break;
-                        case 'D':
-                            cEW = 0x08;
-                            break;
-                        case 'E':
-                            cEW = 0x10;
-                            break;
-                        case 'F':
-                            cEW = 0x20;
-                            break;
-                        default:
-                            m_pReadFile->Error (15);
-                            break;
-                        }
-                    }
-                    else
-                        m_pReadFile->Error (15);
+                    if(nbre < 1 || nbre > GetEWEingTotAnz()) 
+                        m_pReadFile->Error(12);
+                    type = 5;   //Eingänge
                 }
+                // EW ouput noch A oder C lesen
+                strEW = m_pReadFile->ReadAlpha ();
+                if(strEW.length() == 1)
+                {	cEW = strEW.at(0);
+                    switch(cEW) {
+                    case 'A':
+                        cEW = 0x01;
+                        break;
+                    case 'B':
+                        cEW = 0x02;
+                        break;
+                    case 'C':
+                        cEW = 0x04;
+                        break;
+                    case 'D':
+                        cEW = 0x08;
+                        break;
+                    case 'E':
+                        cEW = 0x10;
+                        break;
+                    case 'F':
+                        cEW = 0x20;
+                        break;
+                    default:
+                        m_pReadFile->Error (15);
+                        break;
+                    }
+                }
+                else
+                    m_pReadFile->Error (15);
             }
             else if(str.compare("IF") == 0)
             {
@@ -1689,10 +1739,14 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 pos = m_pReadFile->ReadNumber();
                 if(pos <= 0 || pos > 256)
                     m_pReadFile->Error(134);
+                if(pos % PORTANZAHLCHANNEL) // kein mehrfaches von 8
+                    m_pReadFile->Error(144);
                 m_EWUSBEingAnz = pos;
                 // Anzahl Ausgänge
                 m_pReadFile->ReadBuf(buf, ',');
                 pos = m_pReadFile->ReadNumber();
+                if(pos % PORTANZAHLCHANNEL) // kein mehrfaches von 8
+                    m_pReadFile->Error(144);                
                 if(pos <= 0 || pos > 256)
                     m_pReadFile->Error(135);                
                 m_EWUSBAusgAnz = pos;
@@ -1707,7 +1761,10 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(m_pEWUSBSerial)
                     m_pReadFile->Error(136);
                 m_pEWUSBSerial = new CEWUSBSerial;
+                m_pEWUSBSerial->SetIOGroup((char *)this);
                 pos = m_pEWUSBSerial->Init(str, baudrate, bits, stops, parity, false);
+                if(pos)
+                    m_pReadFile->Error(136+pos);
             }
             else if(strncmp(buf, "Integer", 7) == 0) 
             {
@@ -2275,13 +2332,12 @@ void CIOGroup::ReadConfig(char *pProgramPath)
     // EasyWave
     if(m_EWAnzBoard | m_EWUSBAusgAnz | m_EWUSBEingAnz)
     {
-        m_pEWAusg = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBAusgAnz];
         // EasyWave Eingänge
-        m_pEWEing = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
-        m_pEWEingLast = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
-        m_pEWEingDelay = new int [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
+        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz;        
+        m_pEWEing = new char [i];
+        m_pEWEingLast = new char [i];
+        m_pEWEingDelay = new int [i];
         m_pEWBoardAddr = new CBoardAddr [m_EWAnzBoard];
-        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz;
         for(pos=0; pos < i; pos++)
         {
             m_pEWEing[pos] = 0;
@@ -2289,12 +2345,13 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             m_pEWEingDelay[pos] = 0;
         }
         // EasyWave Ausgänge
-        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBAusgAnz;
+        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBAusgAnz;        
+        m_pEWAusg = new char [i];        
         for(pos=0; pos < i; pos++)
             m_pEWAusg[pos] = 0;
-
-    // Merker
     }
+    
+    // Merker    
     if(m_MerkAnz)
     {
         m_pcMerk = new char [m_MerkAnz / PORTANZAHLCHANNEL];
@@ -2677,7 +2734,7 @@ void CIOGroup::EW_GetBezeichnung(char *ptr, int channel)
     int reg, i;
     CBoardAddr *addr;
 
-    if(channel > 0 && channel <= m_EWAnzBoard*EWANZAHLCHANNEL)
+    if(channel > 0 && channel <= GetEWBoardAnz())
     {
         channel--;
         addr = &m_pEWBoardAddr[channel/EWANZAHLCHANNEL];		
@@ -2705,10 +2762,16 @@ void CIOGroup::EW_GetBezeichnung(char *ptr, int channel)
         else
             sprintf(ptr, "frei");
     }
-}
-int CIOGroup::EW_GetAnzahlChannel()
-{
-    return m_EWAnzBoard * EWANZAHLCHANNEL;
+    else if(channel > 0 && channel > GetEWBoardAnz() && channel <= GetEWEingTotAnz())
+    {
+        if(m_pEWUSBSerial->IsBelegt(channel))
+            sprintf(ptr, "belegt");
+        else
+            sprintf(ptr, "frei");
+    }
+    else
+        sprintf(ptr, "unbekannt");
+
 }
 
 void CIOGroup::EW_ResetChannel(int channel)
@@ -2726,6 +2789,9 @@ void CIOGroup::EW_ResetChannel(int channel)
         ret = BSC_WriteReg (1, addr->Addr3, DELLN, RX_MODE);
         EW_SetReceive (addr);
     }
+    else if(channel > m_EWAnzBoard*EWANZAHLCHANNEL && channel <= GetEWEingTotAnz())
+        m_pEWUSBSerial->ResetEingChannel(channel);
+
 }
 
 void CIOGroup::EW_Reset()
@@ -2734,6 +2800,8 @@ void CIOGroup::EW_Reset()
 
     for(i=0; i < m_EWAnzBoard*EWANZAHLCHANNEL; i++)
         EW_ResetChannel(i+1);
+    if(m_pEWUSBSerial)
+        m_pEWUSBSerial->ResetEing();
     m_iLastEWButtonErkennen = 0;
 }
 
@@ -2746,7 +2814,7 @@ int CIOGroup::EW_SetReceive (CBoardAddr *addr)
     return BSC_WriteReg (1, addr->Addr3, RX_RQ, RX_MODE);
 }
 
-bool CIOGroup::EW_TransmitFinish(int channel)
+bool CIOGroup::EWBoard_TransmitFinish(int channel)
 {
     CBoardAddr *addr;
     int ret;
@@ -2763,10 +2831,12 @@ bool CIOGroup::EW_TransmitFinish(int channel)
         else
             bRet = true;
     }
+    else if(channel >  m_EWAnzBoard*EWANZAHLCHANNEL && channel <= GetEWAusgTotAnz())
+        bRet = true;
     return bRet;
 }
 
-int CIOGroup::EW_Transmit(int channel, int button)
+int CIOGroup::EWBoard_Transmit(int channel, int button)
 {
     int ret=0;
     CBoardAddr *addr;
@@ -2792,11 +2862,22 @@ int CIOGroup::EW_SetLearn(int channel)
         addr = &m_pEWBoardAddr[channel/EWANZAHLCHANNEL];		
         addr->setI2C_gpio();
         ret = BSC_WriteReg(1, addr->Addr3, channel, RX_CHANNEL);
-        // JEN userdata sind noch nicht definiert
-        //ret += BSC_WriteReg(2, addr->Addr3, (channel+1)*256 + channel+1, RX_USERDATA0);
         ret += BSC_WriteReg(1, addr->Addr3, LN_RQ, RX_MODE);
     }
+    else if(channel > m_EWAnzBoard*EWANZAHLCHANNEL && channel <= GetEWEingTotAnz())
+        m_iEWUSBSetLearnChannel = channel - m_EWAnzBoard*EWANZAHLCHANNEL;
     return ret;
+}
+
+void CIOGroup::EW_AusgSend(int channel, int button)
+{
+    struct EWAusgEntity EWAusg;
+    if(channel > 0 && channel <= GetEWAusgTotAnz())
+    {
+        EWAusg.iNr = channel*256 + button;
+        EWAusg.iSource = 3;
+        m_EWAusgFifo.push(EWAusg);
+    }        
 }
 
 //
@@ -2830,6 +2911,7 @@ int CIOGroup::EW_Received(int board)
 
     (&m_pEWBoardAddr[board])->setI2C_gpio();
     RX_Status = BSC_ReadReg(1, m_pEWBoardAddr[board].Addr3, RX_STATUS);
+    les = RX_TEL_CHANGED;
     if(RX_Status & RX_TEL_CHANGED) 
     {	les = BSC_ReadReg(1, m_pEWBoardAddr[board].Addr3, RX_MODE);
         if(les == RX_RQ) // Receive mode
@@ -2838,7 +2920,6 @@ int CIOGroup::EW_Received(int board)
             {	ret = BSC_ReadReg(2, m_pEWBoardAddr[board].Addr3, RX_CHANNEL);
                 channel = ret / 256;
                 button = ret % 256;
-                // FEHLERANALYSE 22.07.16 
                 if(channel > 31 || channel < 0)
                 {   sprintf(text, "Button pressed 0 < channel > 31 %d", channel);
                     syslog(LOG_INFO, text);
@@ -2859,8 +2940,7 @@ int CIOGroup::EW_Received(int board)
             {	// gedrückte Taste wurde losgelassen !!
                 ret = BSC_ReadReg(2, m_pEWBoardAddr[board].Addr3, RX_CHANNEL);
                 channel = ret / 256;
-                button = ret % 256;
-                // FEHLERANALYSE 22.07.16 
+                button = ret % 256; 
                 if(channel > 31 || channel < 0)
                 {   sprintf(text, "Button released 0 < channel > 31 %d", channel);
                     syslog(LOG_INFO, text);
@@ -2871,7 +2951,6 @@ int CIOGroup::EW_Received(int board)
                     syslog(LOG_INFO, text);
                     button = 0;
                 }
-                // JEN 30.05.16
                 if(m_iLastEWButton == (board*EWANZAHLCHANNEL + channel + 1)*256 + button)
                 {
                     SetEWEingStatus (board*EWANZAHLCHANNEL + channel + 1, button, false);
@@ -2923,6 +3002,7 @@ CIOGroup::CIOGroup()
     m_pEWBoardAddr = NULL;
     m_iLastEWButton = 0;
     m_iLastEWButtonErkennen = 0;
+    m_iEWUSBSetLearnChannel = 0;
     // Merker
     m_MerkAnz = 0;
     m_pcMerk = NULL;
@@ -3166,7 +3246,6 @@ void CIOGroup::SetEWEingStatus(int nr, int button, bool bState)
 {
     char zstd;
 
-    // JEN 30.05.16
     if(nr < 1 || nr > m_EWAnzBoard * EWANZAHLCHANNEL + m_EWUSBEingAnz)
         return;
 
@@ -3312,9 +3391,29 @@ void CIOGroup::SetEingStatus(int nr, bool bState)
     m_bBerechne = true;
 }
 
-int CIOGroup::GetEWAnz()
+int CIOGroup::GetEWBoardAnz()
 {
     return m_EWAnzBoard * EWANZAHLCHANNEL;
+}
+
+int CIOGroup::GetEWUSBEingAnz()
+{
+    return m_EWUSBEingAnz;
+}
+
+int CIOGroup::GetEWUSBAusgAnz()
+{
+    return m_EWUSBAusgAnz;
+}
+
+int CIOGroup::GetEWEingTotAnz()
+{
+    return(m_EWAnzBoard * EWANZAHLCHANNEL + m_EWUSBEingAnz);
+}
+
+int CIOGroup::GetEWAusgTotAnz()
+{
+    return(m_EWAnzBoard * EWANZAHLCHANNEL + m_EWUSBAusgAnz);
 }
 
 char * CIOGroup::GetEWEingAddress(int nr)
