@@ -33,8 +33,10 @@ typedef unsigned char BYTE;
 #include <map>
 #include <queue>    
 #include <vector>
+#include <termios.h>
 #include "curl/curl.h"
 #include <mpd/client.h>
+#include "CSerial.h"
 #include "gpiolib.h"
 #include "CRS485.h"
 #include "CModBus.h"

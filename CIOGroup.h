@@ -64,8 +64,12 @@ protected:
     int *m_pEingInterrupt;		// delay der EingAusgboards
     CBoardAddr *m_pEingBoardAddr;
 
-    // EasyWave
+    // EasyWave board
     int m_EWAnzBoard;	// Anzahl Boards a 32 Kanäle
+    // EasyWave USB
+    CEWUSBSerial * m_pEWUSBSerial;
+    int m_EWUSBEingAnz; // Anzahl USB Eingänge 
+    int m_EWUSBAusgAnz; // Anzahl USB Ausgänge
     char *m_pEWEing;	// Zustand der EWEingänge
     //			Bit 0 : Zustandeinzeltaster A
     //			Bit 1 : Zustandeinzeltaster B

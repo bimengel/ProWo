@@ -472,7 +472,6 @@ void CIOGroup::Les_IOGroup()
         m_pcEing[i] = gpio1;
     }
     
-
     for(i=0; i < m_EWAnzBoard; i++)
     {
         if(EW_TransmitFinish((i+1)*EWANZAHLCHANNEL))
@@ -1040,6 +1039,15 @@ void CIOGroup::InitGroup()
             break;
         case 133:
             str3 = "DIFF not last";
+            break;
+        case 134:
+            str3 = "EWUSB Eing wrong";
+            break;
+        case 135:
+            str3 = "EWUSB Ausg wrong";
+            break;
+        case 136:
+            str3 = "Only one EW USB";
             break;
         default:
             str3 = "error not def.!";
@@ -1634,6 +1642,8 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
             else if(strncmp(buf, "HUELIGHT", 8) == 0
                     | strncmp(buf, "HUEGROUP", 8) == 0)
                 m_iMaxAnzHueEntity++;
+//            else if(strncmp(buf, "USB_EW", 6) == 0)
+//                buf[0] = 0;
         }
         else
             break;
@@ -1670,7 +1680,36 @@ void CIOGroup::ReadConfig(char *pProgramPath)
         if(m_pReadFile->ReadLine())
         {
             m_pReadFile->ReadBuf(buf, ':');
-            if(strncmp(buf, "Integer", 7) == 0) 
+            if(strncmp(buf, "USB_EW", 6) == 0)
+            {   int baudrate, bits, stops;
+                char parity;
+                str = m_pReadFile->ReadText(',');
+                m_pReadFile->ReadBuf(buf, ',');
+                // Anzahl Eingänge
+                pos = m_pReadFile->ReadNumber();
+                if(pos <= 0 || pos > 256)
+                    m_pReadFile->Error(134);
+                m_EWUSBEingAnz = pos;
+                // Anzahl Ausgänge
+                m_pReadFile->ReadBuf(buf, ',');
+                pos = m_pReadFile->ReadNumber();
+                if(pos <= 0 || pos > 256)
+                    m_pReadFile->Error(135);                
+                m_EWUSBAusgAnz = pos;
+                m_pReadFile->ReadBuf(buf, ',');                
+                baudrate = m_pReadFile->ReadNumber ();
+                m_pReadFile->ReadBuf(buf, ',');
+                bits = m_pReadFile->ReadNumber ();
+                m_pReadFile->ReadBuf(buf, ',');
+                m_pReadFile->ReadBuf(buf, ',');
+                parity = toupper(buf[0]);
+                stops = m_pReadFile->ReadNumber ();                
+                if(m_pEWUSBSerial)
+                    m_pReadFile->Error(136);
+                m_pEWUSBSerial = new CEWUSBSerial;
+                pos = m_pEWUSBSerial->Init(str, baudrate, bits, stops, parity, false);
+            }
+            else if(strncmp(buf, "Integer", 7) == 0) 
             {
                 pos = m_pReadFile->ReadNumber ();
                 if(pos < 0)
@@ -2082,7 +2121,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             }
             else if(strncmp(buf, "RS485", 5) == 0) 
             {	int nr;
-                int baudrate, bits, stops, zykluszeit;
+                int baudrate, bits, stops;
                 char parity;
                 if(strncmp(buf, "RS485_1", 7) == 0)
                     nr = 1;
@@ -2234,22 +2273,26 @@ void CIOGroup::ReadConfig(char *pProgramPath)
     }
 
     // EasyWave
-    if(m_EWAnzBoard)
+    if(m_EWAnzBoard | m_EWUSBAusgAnz | m_EWUSBEingAnz)
     {
-        m_pEWAusg = new char [m_EWAnzBoard *EWANZAHLCHANNEL];
+        m_pEWAusg = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBAusgAnz];
         // EasyWave Eingänge
-        m_pEWEing = new char [m_EWAnzBoard *EWANZAHLCHANNEL];
-        m_pEWEingLast = new char [m_EWAnzBoard *EWANZAHLCHANNEL];
-        m_pEWEingDelay = new int [m_EWAnzBoard *EWANZAHLCHANNEL];
+        m_pEWEing = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
+        m_pEWEingLast = new char [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
+        m_pEWEingDelay = new int [m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz];
         m_pEWBoardAddr = new CBoardAddr [m_EWAnzBoard];
-        // EasyWave Ausgänge
-        for(pos=0; pos < m_EWAnzBoard *EWANZAHLCHANNEL; pos++)
+        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBEingAnz;
+        for(pos=0; pos < i; pos++)
         {
-            m_pEWAusg[pos] = 0;
             m_pEWEing[pos] = 0;
             m_pEWEingLast[pos] = 0;
             m_pEWEingDelay[pos] = 0;
         }
+        // EasyWave Ausgänge
+        i = m_EWAnzBoard *EWANZAHLCHANNEL + m_EWUSBAusgAnz;
+        for(pos=0; pos < i; pos++)
+            m_pEWAusg[pos] = 0;
+
     // Merker
     }
     if(m_MerkAnz)
@@ -2871,6 +2914,9 @@ CIOGroup::CIOGroup()
     m_pEingBoardAddr = NULL;
     // EasyWave
     m_EWAnzBoard=0;
+    m_EWUSBEingAnz = 0;
+    m_EWUSBAusgAnz = 0;
+    m_pEWUSBSerial = NULL;
     m_pEWEing = NULL;
     m_pEWEingLast = NULL;
     m_pEWEingDelay = NULL;
@@ -3121,7 +3167,7 @@ void CIOGroup::SetEWEingStatus(int nr, int button, bool bState)
     char zstd;
 
     // JEN 30.05.16
-    if(nr < 1 || nr > m_EWAnzBoard * EWANZAHLCHANNEL)
+    if(nr < 1 || nr > m_EWAnzBoard * EWANZAHLCHANNEL + m_EWUSBEingAnz)
         return;
 
     zstd = m_pEWEing[nr - 1];

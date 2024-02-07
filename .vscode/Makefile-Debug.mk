@@ -56,6 +56,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/CRS485.o \
 	${OBJECTDIR}/CReadFile.o \
 	${OBJECTDIR}/CSensor.o \
+	${OBJECTDIR}/CSerial.o \
 	${OBJECTDIR}/CSonos.o \
 	${OBJECTDIR}/CStatistic.o \
 	${OBJECTDIR}/CTH1.o \
@@ -196,6 +197,11 @@ ${OBJECTDIR}/CSensor.o: CSensor.cpp
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -g `pkg-config --cflags libcurl` `pkg-config --cflags libmpdclient`   -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/CSensor.o CSensor.cpp
+
+${OBJECTDIR}/CSerial.o: CSerial.cpp
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.cc) -g `pkg-config --cflags libcurl` `pkg-config --cflags libmpdclient`   -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/CSerial.o CSerial.cpp
 
 ${OBJECTDIR}/CSonos.o: CSonos.cpp
 	${MKDIR} -p ${OBJECTDIR}

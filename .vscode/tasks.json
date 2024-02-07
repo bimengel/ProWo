@@ -3,7 +3,7 @@
         {
             "type": "shell",
             "label": "ProWo build debug version",
-            "command": "/usr/bin/make -f ${workspaceRoot}/Makefile CONF=Debug",
+            "command": "/usr/bin/make -f ${workspaceFolder}/Makefile CONF=Debug",
             "args": [],
             "options": {
                 "cwd": "${fileDirname}"
@@ -20,7 +20,7 @@
         {
             "type": "shell",
             "label": "ProWo build release version",
-            "command": "/usr/bin/make -f ${workspaceRoot}/Makefile CONF=Release",
+            "command": "/usr/bin/make -f ${workspaceFolder}/Makefile CONF=Release",
             "args": [
 
             ],
@@ -36,7 +36,7 @@
         {
             "type": "shell",
             "label": "ProWo clean",
-            "command": "rm -f -r ${workspaceRoot}/build",
+            "command": "rm -f -r ${workspaceFolder}/build",
             "group": "clean",
             "detail": "clean directory build"
         }        
