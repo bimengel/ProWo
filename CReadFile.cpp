@@ -252,7 +252,7 @@ int CReadFile::OpenRead(char *pProgramPath, int type, int nr, int iTest)
     string strName;
 
     m_iType = type;
-
+    m_iZeile = 0;
     strName = GetFileName(pProgramPath, type, nr);
     m_fp = fopen(strName.c_str(), "r");
 

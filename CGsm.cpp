@@ -605,7 +605,8 @@ void CGsm::LesDatei(char *pProgramPath, char * pIO)
     char buf[MSGSIZE];
 	CReadFile *pReadFile;
     CConfigCalculator *pcc;
-	COperBase *pOperBase;
+	COperBase **pOperBase;
+    CBerechneBase *pBerechne;
     CIOGroup * pIOGroup;
     char ch;
     
@@ -726,11 +727,15 @@ void CGsm::LesDatei(char *pProgramPath, char * pIO)
                             pReadFile->Error(106);
                         pcc->eval(buf, pIOGroup, 1);
                         iAnz = pcc->GetAnzOper ();
-                        if(iAnz > 2)
-                            pReadFile->Error(107);
-                        pOperBase = new COperBase;
-                        pOperBase = pcc->GetOper(0);
-                        m_pSMSTexte[i].SetOper(iPos, pOperBase, ch);
+                        if(ch == 's' && iAnz > 2)
+                            pReadFile->Error(108);
+                        pOperBase = new COperBase * [iAnz];
+                        for(j=0; j < iAnz; j++)
+                            pOperBase[j] = pcc->GetOper(j);                        
+                        pBerechne = new CBerechneBase;
+                        pBerechne->setIfElse(1);
+                        pBerechne->setOper(pOperBase);
+                        m_pSMSTexte[i].SetOper(iPos, pBerechne, ch);
                         delete pcc;
                         pcc = NULL; 
                     }
@@ -889,7 +894,6 @@ void CUartI2C::SendLen(unsigned char *ptr, int len)
 	int i;
 	
 	m_pBoardAddr->setI2C_gpio();
-	//BSC_WriteString(len, m_pBoardAddr->Addr3, ptr, THR);
 	for(i=0; i < len; i++)
 		BSC_WriteReg (1, m_pBoardAddr->Addr3, *(ptr+i), THR);
 }
@@ -1057,16 +1061,16 @@ bool CUartI2C::ReadState()
 CSMSText::CSMSText()
 {
     m_strText.clear();
-    m_pOper = NULL;
+    m_pBerechneBase = NULL;
     m_pOperTyp = NULL;
 }
 
 CSMSText::~CSMSText()
 {
-    if(m_pOper != NULL)
+    if(m_pBerechneBase != NULL)
     {
-        delete [] (COperBase *)m_pOper;
-        m_pOper= NULL;
+        delete [] (CBerechneBase *)m_pBerechneBase;
+        m_pBerechneBase = NULL;
     }
     if(m_pOperTyp != NULL)
     {
@@ -1093,10 +1097,10 @@ string CSMSText::GetString()
         str += m_strText.substr(iStart, iPos - iStart);
         switch(m_pOperTyp[iIdx]) {
             case 'd':
-                strHelp = to_string(m_pOper[iIdx]->resultInt());
+                strHelp = to_string(m_pBerechneBase[iIdx]->eval());
                 break;
             case 's':
-                strHelp = m_pOper[iIdx]->resultString();
+                strHelp = m_pBerechneBase[iIdx]->GetString();
                 break;
             default:
                 strHelp.clear();
@@ -1118,13 +1122,13 @@ void CSMSText::SetString(string str)
 
 void CSMSText::Init(int iAnz)
 {
-    m_pOper = new COperBase* [iAnz];
+    m_pBerechneBase = new CBerechneBase * [iAnz];
     m_pOperTyp = new char[iAnz];
 }
 
-void CSMSText::SetOper(int iIdx, COperBase *pOper, char ch)
+void CSMSText::SetOper(int iIdx, CBerechneBase *pBerechne, char ch)
 {
-    m_pOper[iIdx] = pOper;
+    m_pBerechneBase[iIdx] = pBerechne;
     m_pOperTyp[iIdx] = ch;
 }
 

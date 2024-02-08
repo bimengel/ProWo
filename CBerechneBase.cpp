@@ -48,6 +48,11 @@ void CBerechneBase::setOper(COperBase **pOperBase)
     m_pOperBase = pOperBase;
 }
 
+string CBerechneBase::GetString()
+{
+    return m_pOperBase[0]->resultString();
+}
+
 //
 //  write : Anzeige von Resultaten
 CBerechneWrite::CBerechneWrite()

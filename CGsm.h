@@ -44,10 +44,10 @@ public:
     string GetString();
     void SetString(string str);
     void Init(int iAnz);
-    void SetOper(int iIdx, COperBase *pOper, char ch);
+    void SetOper(int iIdx, CBerechneBase *pBerechne, char ch);
 protected:
     string m_strText;
-    COperBase **m_pOper;
+    CBerechneBase **m_pBerechneBase;
     char *m_pOperTyp;
 };
 

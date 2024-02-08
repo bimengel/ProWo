@@ -29,6 +29,7 @@ struct EWAusgEntity
 //  CBerechneBase wird eingesetzt:
 //      - GetState() : Browsermenu zum Lesen des Zustandes 
 //      - SetState() : zum Ändern des Zustandes z.B Inkrement S0-Zähler
+//      - GesString() : Gibt im Stringformat den Wert des ersten COperBase zurück
 class CBerechneBase
 {
 public:
@@ -39,7 +40,7 @@ public:
     int getIfElse() {return m_IfElse; };
     virtual int GetState(){ return 0;};
     virtual void SetState(int state){}; 
-    virtual char * GetContent() {return NULL;};
+    string GetString();
 	
 protected:
     int m_nr;
