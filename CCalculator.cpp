@@ -846,6 +846,8 @@ void CConfigCalculator::LesIntervalDiff(int *iInterval, int *iDiff)
             *iInterval = 3;
         else if(strncmp(text, "JAHR", 4) == 0 && strlen(text) == 4)
             *iInterval = 4;
+        else if(strncmp(text, "ANZEIGEWERT", 11) ==0 && strlen(text) == 11)
+            *iInterval = 5;
         else
             m_pReadFile->Error(107);
     }

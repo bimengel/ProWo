@@ -48,14 +48,29 @@ protected:
     COperBase **m_pOperBase;
 };
 
+class CFormatText
+{
+public:
+    CFormatText();
+    ~CFormatText();  
+    string GetString();
+    void SetString(string str);
+    void Init(int iAnz);
+    void SetOper(int iIdx, CBerechneBase *pBerechne, char ch);
+protected:
+    string m_strText;
+    CBerechneBase **m_pBerechneBase;
+    char *m_pOperTyp;
+};
+
 class CBerechneWrite:public CBerechneBase
 {
 public:
     CBerechneWrite();
-    void init(string str);
+    void init(CReadFile *pReadFile, void *pIOGroup);
     virtual void SetState(int iWert);
 protected:
-    string m_strText;
+    CFormatText m_FormatText;
 };
 
 

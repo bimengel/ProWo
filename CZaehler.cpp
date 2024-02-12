@@ -184,7 +184,12 @@ double CZaehler::GetDblStand()
     return (double)GetIntStand() / (double)m_iFactor;
 }
 
-double CZaehler::GetOffset()
+int CZaehler::GetIntOffset()
+{
+    return m_iOffset;
+}
+
+double CZaehler::GetDblOffset()
 {
     return ((double)m_iOffset) / ((double)m_iFactor);
 }
@@ -311,10 +316,27 @@ string CZaehler::GetresultString(int iInterval, int iDiff)
 int CZaehler::GetresultInt(int iInterval, int iDiff)
 {   
     int iRet;
-    if(iInterval)
-        iRet = GetResultInt(iInterval, iDiff, GetIntAktTag());
-    else
-        iRet = GetIntStand();
+    switch(iInterval) {
+        case 0: // Stand des Zählers
+            iRet = GetIntStand();
+            break;
+        case 1: // Tag
+        case 2: // Woche
+        case 3: // Monat
+        case 4: // Jahr
+            iRet = GetResultInt(iInterval, iDiff, GetIntAktTag());
+            break;
+        case 5: // Wert 
+            if(m_iAnzeigeArt)
+                iRet = GetIntOffset() - GetIntStand();
+            else
+                iRet = GetIntStand() - GetIntOffset();
+                break;
+            break;
+        default:
+            iRet = 0;
+            break;
+    }
     return iRet;
 }
 

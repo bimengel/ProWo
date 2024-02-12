@@ -59,17 +59,17 @@ CBerechneWrite::CBerechneWrite()
 {
     
 }
-void CBerechneWrite::init(string str)
+void CBerechneWrite::init(CReadFile *pReadFile, void *pIOGroup)
 {
     m_nr = 0;
-    m_strText = str;
+    ((CIOGroup *)pIOGroup)->SetFormatText(&m_FormatText, pReadFile);
 }
 
 void CBerechneWrite::SetState(int iWert)
 {
     string str;
 
-    str = m_strText + " : " + to_string(iWert);
+    str = m_FormatText.GetString();
     syslog(LOG_INFO, str.c_str());
 }
 

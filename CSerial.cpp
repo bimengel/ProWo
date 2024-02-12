@@ -224,7 +224,7 @@ bool CEWUSBSerial::Control(int *iEWUSBSetLearnChannel)
     {   
         if(m_iChannel)
         {
-            if(m_iWaitBeforeEnd++ >= 3)
+            if(m_iWaitBeforeEnd++ >= 500) // bei einer ZYKLUSZEIT von 1ms, mindestens 500m
             {
                 m_pIOGroup->SetEWEingStatus(m_iChannel+m_pIOGroup->GetEWBoardAnz(), m_iButton, false);
                 m_iChannel = 0;

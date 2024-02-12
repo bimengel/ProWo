@@ -601,12 +601,8 @@ CGsm::~CGsm()
 void CGsm::LesDatei(char *pProgramPath, char * pIO)
 {
 	string str;
-	int iCase = 0, i, j, iParam, iPos, iAnz, iPosParam;
-    char buf[MSGSIZE];
+	int iCase = 0, i;
 	CReadFile *pReadFile;
-    CConfigCalculator *pcc;
-	COperBase **pOperBase;
-    CBerechneBase *pBerechne;
     CIOGroup * pIOGroup;
     char ch;
     
@@ -662,7 +658,7 @@ void CGsm::LesDatei(char *pProgramPath, char * pIO)
 		pReadFile->Error(44);
 
 	if(m_iAnzTexte)
-		m_pSMSTexte = new CSMSText[m_iAnzTexte];
+		m_pSMSTexte = new CFormatText[m_iAnzTexte];
 	else
 		pReadFile->Error(45);
 	
@@ -702,44 +698,7 @@ void CGsm::LesDatei(char *pProgramPath, char * pIO)
 				i++;
 				break;
 			case 2:
-				str = pReadFile->ReadText(';');
-				m_pSMSTexte[i].SetString(str);
-                for(iPos = 0, iParam = 0; iPos != string::npos ;)
-                {
-                    iPos = str.find("#", iPos+1);
-                    if(iPos != string::npos)
-                        iParam++;
-                }  
-                if(iParam)
-                {
-                    m_pSMSTexte[i].Init(iParam);
-                    pReadFile->ReadSeparator();                    
-                    
-                    for(iPos=0, iPosParam=0 ; iPos < iParam; iPos++)
-                    {
-                        iPosParam = str.find("#", iPosParam+1);
-                        ch = str[iPosParam+1];
-                        if(ch != 's' && ch != 'd')
-                            pReadFile->Error(107);
-                        pcc = new CConfigCalculator(pReadFile);
-                        pReadFile->ReadBuf(buf, ';');
-                        if(!strlen(buf))
-                            pReadFile->Error(106);
-                        pcc->eval(buf, pIOGroup, 1);
-                        iAnz = pcc->GetAnzOper ();
-                        if(ch == 's' && iAnz > 2)
-                            pReadFile->Error(108);
-                        pOperBase = new COperBase * [iAnz];
-                        for(j=0; j < iAnz; j++)
-                            pOperBase[j] = pcc->GetOper(j);                        
-                        pBerechne = new CBerechneBase;
-                        pBerechne->setIfElse(1);
-                        pBerechne->setOper(pOperBase);
-                        m_pSMSTexte[i].SetOper(iPos, pBerechne, ch);
-                        delete pcc;
-                        pcc = NULL; 
-                    }
-                }
+                pIOGroup->SetFormatText(&m_pSMSTexte[i], pReadFile);
 				i++;
 				break;
             case 3:
@@ -1058,14 +1017,14 @@ bool CUartI2C::ReadState()
 	return bRet;
 }
 
-CSMSText::CSMSText()
+CFormatText::CFormatText()
 {
     m_strText.clear();
     m_pBerechneBase = NULL;
     m_pOperTyp = NULL;
 }
 
-CSMSText::~CSMSText()
+CFormatText::~CFormatText()
 {
     if(m_pBerechneBase != NULL)
     {
@@ -1079,7 +1038,7 @@ CSMSText::~CSMSText()
     }
 }
 
-string CSMSText::GetString()
+string CFormatText::GetString()
 {
     string str, strHelp;
     int iParam, iPos, iStart, iIdx;
@@ -1115,18 +1074,18 @@ string CSMSText::GetString()
     return str;
 }
 
-void CSMSText::SetString(string str)
+void CFormatText::SetString(string str)
 {
     m_strText = str;
 }
 
-void CSMSText::Init(int iAnz)
+void CFormatText::Init(int iAnz)
 {
     m_pBerechneBase = new CBerechneBase * [iAnz];
     m_pOperTyp = new char[iAnz];
 }
 
-void CSMSText::SetOper(int iIdx, CBerechneBase *pBerechne, char ch)
+void CFormatText::SetOper(int iIdx, CBerechneBase *pBerechne, char ch)
 {
     m_pBerechneBase[iIdx] = pBerechne;
     m_pOperTyp[iIdx] = ch;

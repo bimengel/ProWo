@@ -199,6 +199,7 @@ public:
     char * GetpcAusgHistory();
     int GetTest();
     CAlarmClock * GetAlarmClockAddress();
+    void SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile);
     
 protected:
     int readAnzeige();

@@ -63,4 +63,5 @@ private:
     int m_iType;    // 0 oder 1 wenn ein Wert, sonst z.B. Vergleichzeichen
 };
 
+
 #endif // _CALCULATOR_H_

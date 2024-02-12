@@ -36,21 +36,6 @@ protected:
     int m_iState;
 };
 
-class CSMSText
-{
-public:
-    CSMSText();
-    ~CSMSText();  
-    string GetString();
-    void SetString(string str);
-    void Init(int iAnz);
-    void SetOper(int iIdx, CBerechneBase *pBerechne, char ch);
-protected:
-    string m_strText;
-    CBerechneBase **m_pBerechneBase;
-    char *m_pOperTyp;
-};
-
 class CSendSMS
 {
 public:
@@ -117,7 +102,7 @@ private:
 	CUartI2C *m_pUartI2C;
 	CSendSMS *m_pSendSMS;
 	string *m_pNummern;
-	CSMSText *m_pSMSTexte;
+	CFormatText *m_pSMSTexte;
 	int m_iAnzNummern;		// Anzahl der Nummern aus der config-Datei und in m_pNummern;
 	int m_iAnzTexte;		// Anzahl der Texte aus der config-Datei und in m_pTexte
 	int m_iSignal;			// Signalstärke

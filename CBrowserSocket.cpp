@@ -828,7 +828,7 @@ void CBrowserSocket::VerwaltZaehler(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                     pthread_mutex_lock(&ext_mutexNodejs);
                     dblZaehlerStand = pZaehler->GetDblStand();
                     pthread_mutex_unlock(&ext_mutexNodejs);                    
-                    dblOffset = pZaehler->GetOffset();
+                    dblOffset = pZaehler->GetDblOffset();
                     iAnzeigeArt = pZaehler->GetAnzeigeArt();
                     str += "{\"id\":\"3_" + to_string(i+1) + "_1_1\",";
                     Send(str.c_str());

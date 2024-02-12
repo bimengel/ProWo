@@ -447,10 +447,10 @@ int CIOGroup::BerechneZeile(int iLine, bool bState, bool bEval)
             bTemp = (bool) m_pBerechne[iLine]->eval();
             iLine = BerechneZeile(++iLine, bState && ((bEval && !bElse) || (!bEval && bElse)), bTemp);
             break;
-        case 2:	// Else Zeile
+        case 2:	// ELSE Zeile
             bElse = true;
             break;
-        case 3:
+        case 3: // ENDIF Zeile
         default:
             return iLine;
             break;
@@ -1423,13 +1423,11 @@ void CIOGroup::LesParam(char *pProgramPath)
                 anz = pcc->GetAnzOper();
                 break;
             case 9: // write
-                m_pReadFile->ReadBuf(buf, ',');
-                str = buf;
-                if(m_pReadFile->ReadBuf(buf, ')') == -1)
-                    m_pReadFile->Error(78);
-                pcc->eval(buf, this, type);
+                // write wird immer ausgeführt, es gibt keine Operanten und Operatoren
+                // deshalb wird die Zeichenkett "1" angegeben
+                pcc->eval("1", this, type);
                 anz = pcc->GetAnzOper();
-                break;
+                break; 
             case 12: // Musik
                 nbre = m_pReadFile->ReadZahl();
                 if(nbre < 0 || nbre > m_pMusic->GetAnzahl())
@@ -1539,7 +1537,7 @@ void CIOGroup::LesParam(char *pProgramPath)
             case 9: //write
                 pOperBase = new COperBase *[anz];
                 pWrite = new CBerechneWrite;
-                pWrite->init(str);
+                pWrite->init(m_pReadFile, (void *)this);
                 pWrite->setOper(pOperBase);
                 m_pBerechne[idxBerechne] = pWrite;
                 for(i=0; i < anz; i++)
@@ -4187,4 +4185,55 @@ char * CIOGroup::GetpcAusgHistory()
 CAlarmClock * CIOGroup::GetAlarmClockAddress()
 {
     return m_pAlarmClock;
+}
+
+void CIOGroup::SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile)
+{
+    string str;
+    char buf[MSGSIZE], ch;    
+    int iPos, iParam, iPosParam, j, iAnz;
+    CConfigCalculator *pcc;
+	COperBase **pOperBase;
+    CBerechneBase *pBerechne;
+
+    str = pReadFile->ReadText(';');
+    pFormatText->SetString(str);
+    for(iPos = 0, iParam = 0; iPos != string::npos ;)
+    {
+        iPos = str.find("#", iPos+1);
+        if(iPos != string::npos)
+            iParam++;
+    }  
+    iPos = 0;
+    if(iParam)
+    {
+        pFormatText->Init(iParam);
+        pReadFile->ReadSeparator();                    
+        
+        for(iPosParam=0 ; iPos < iParam; iPos++)
+        {
+            iPosParam = str.find("#", iPosParam+1);
+            ch = str[iPosParam+1];
+            if(ch != 's' && ch != 'd')
+                pReadFile->Error(107);
+            pcc = new CConfigCalculator(pReadFile);
+            pReadFile->ReadBuf(buf, ';');
+            if(!strlen(buf))
+                pReadFile->Error(106);
+            pcc->eval(buf, this, 1);
+            iAnz = pcc->GetAnzOper ();
+            if(ch == 's' && iAnz > 2)
+                pReadFile->Error(108);
+            pOperBase = new COperBase * [iAnz];
+            for(j=0; j < iAnz; j++)
+                pOperBase[j] = pcc->GetOper(j);
+            pBerechne = new CBerechneBase;
+            pBerechne->setOper(pOperBase);
+            pFormatText->SetOper(iPos, pBerechne, ch);
+            delete pcc;
+            pcc = NULL; 
+        }
+    }
+    if(iPos != iParam)
+        pReadFile->Error(109);
 }

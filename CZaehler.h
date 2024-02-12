@@ -38,7 +38,8 @@ public:
     int GetIntStand();          // Zählerstand ohne Berücksichtigung von m_iFactor
     double GetDblStand();       // Zählerstand / m_iFactor
     int GetIntAktTag();         // Wert des heutigen Tages
-    double GetOffset();
+    int GetIntOffset();            // Offset ohne Berücksichtigung vom m_iFactor
+    double GetDblOffset();         // Offset / m_iFactor
     double GetOffset(int iJahr, int iMonat, int iTag);
     int GetOffsetDatum();
     bool IsTyp(int typ);
