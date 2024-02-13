@@ -1163,7 +1163,7 @@ void CIOGroup::LesParam(char *pProgramPath)
     CBerechneSonos *pSonos;   
     CBerechneAC *pAC;
     CBerechneInteger *pInteger;
-
+    CBerechneWriteMessage *pWriteMessage;
     bool bS0Zaehler;
 
     m_pReadFile = new CReadFile;
@@ -1200,7 +1200,9 @@ void CIOGroup::LesParam(char *pProgramPath)
                 bS0Zaehler = true;
             }
 
-            if(str.compare("SONOS") == 0)
+            if(str.compare("writeMessage") == 0)
+                type = 17;
+            else if(str.compare("SONOS") == 0)
             {
                 if(m_pSonos == NULL)
                     m_pReadFile->Error(121);
@@ -1376,6 +1378,7 @@ void CIOGroup::LesParam(char *pProgramPath)
                     m_pReadFile->Error(4);
                 break;
             case 9: // write
+            case 17: // writeMessage
                 if(m_pReadFile->GetChar() != '(')
                     m_pReadFile->Error(84);
                 break;
@@ -1423,6 +1426,7 @@ void CIOGroup::LesParam(char *pProgramPath)
                 anz = pcc->GetAnzOper();
                 break;
             case 9: // write
+            case 17: // writeMessage
                 // write wird immer ausgeführt, es gibt keine Operanten und Operatoren
                 // deshalb wird die Zeichenkett "1" angegeben
                 pcc->eval("1", this, type);
@@ -1612,6 +1616,15 @@ void CIOGroup::LesParam(char *pProgramPath)
                 for(i=0; i < anz; i++)
                     pOperBase[i] = pcc->GetOper(i);                 
                 break;
+            case 17: //writeMessage
+                pOperBase = new COperBase *[anz];
+                pWriteMessage = new CBerechneWriteMessage;
+                pWriteMessage->init(m_pReadFile, (void *)this);
+                pWriteMessage->setOper(pOperBase);
+                m_pBerechne[idxBerechne] = pWriteMessage;
+                for(i=0; i < anz; i++)
+                    pOperBase[i] = pcc->GetOper(i);
+                break;                
             case 100: // IF
                 pOperBase = new COperBase *[anz];
                 pIfElse = new CBerechneBase;
@@ -4236,4 +4249,12 @@ void CIOGroup::SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile)
     }
     if(iPos != iParam)
         pReadFile->Error(109);
+}
+
+int CIOGroup::GetAnzWriteMessage()
+{
+    int ret;
+    std::map<int, class CWriteMessage>::iterator it;
+    for(it = m_mapWriteMessage.begin(), ret = 0; it !=  m_mapWriteMessage.end(); ret++, it++);
+    return ret;
 }

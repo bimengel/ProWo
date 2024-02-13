@@ -141,6 +141,26 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     string str;
 
 // Ebene 1 = Menüabfrage - Navigationsbar
+    switch(iNiv2){
+        case 0: // normale Abfrage
+            anz = m_pIOGroup->m_pBrowserMenu->GetAnzahlGroup() - 1;
+            if(!iNiv3)
+                pos = 1;
+            else
+            {
+                pos = iNiv3 + 4;
+                if(pos > anz)
+                    pos = 1;
+            } 
+            break;
+        case 1: // message löschen
+            pthread_mutex_lock(&ext_mutexNodejs); 
+            m_pIOGroup->m_mapWriteMessage.erase(iNiv4);
+            pthread_mutex_unlock(&ext_mutexNodejs); 
+            break;
+        default:
+            break;
+    }
     anz = m_pIOGroup->m_pBrowserMenu->GetAnzahlGroup() - 1;
     if(!iNiv3)
         pos = 1;
@@ -190,7 +210,28 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     i = m_pUhr->getSU();
     str = ",\"su\":\"" + to_string(i/60) + ":" + strZweiStellen(i%60) + "\"";   
     Send(str.c_str());
-    
+    pthread_mutex_lock(&ext_mutexNodejs); 
+    pos = m_pIOGroup->GetAnzWriteMessage();
+    str = ",\"anzWriteMessage\":\"" + to_string(pos) + "\"";
+    Send(str.c_str());
+    if(pos)
+    {   std::map<int, class CWriteMessage>::iterator it;
+        str = ",\"WriteMessage\":[";
+        Send(str.c_str());
+        bFirst = true;
+        str = "";
+        for(i=0, it=m_pIOGroup->m_mapWriteMessage.begin(); i < pos; it++,i++)
+        {   if(bFirst)
+                bFirst = false;
+            else
+                str = ",";
+            str += "{\"Text\":\"" + it->second.m_strText + "\",\"nr\":\"" + to_string(it->first) + "\"}";
+            Send(str.c_str());
+        }
+        str = "]";
+        Send(str.c_str());
+    }
+    pthread_mutex_unlock(&ext_mutexNodejs);    
     // Heizung
     if(m_pIOGroup->GetHZAddress() != NULL)
     {
@@ -258,7 +299,7 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     if(m_pIOGroup->m_pGsm != NULL)
     {
         str = ",\"gsm\":1,\"signal\":" + to_string(m_pIOGroup->m_pGsm->GetSignal()) + ",\"provider\":\"" 
-                        + m_pIOGroup->m_pGsm->GetProvider() + "\",\"gsmerror\":\"" + m_pIOGroup->m_pGsm->GetError() + "\"";
+                        + m_pIOGroup->m_pGsm->GetProvider() + "\",\"gsmerror\":\"" + m_pIOGroup->m_pGsm->GetErrorString() + "\"";
     }
     else
         str = ",\"gsm\":0";

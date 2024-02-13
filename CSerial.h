@@ -33,5 +33,4 @@ protected:
     // Hier werden die channelnr (startent mit 0!!) und der Kode abgespeichert
     // Key = Kode, channel = mapped value
     std::map<int, int> m_mapCode;
-    std::map<int,int>::iterator m_itmapCode;
 };

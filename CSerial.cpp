@@ -159,6 +159,7 @@ bool CEWUSBSerial::Control(int *iEWUSBSetLearnChannel)
     char chBuf[ANZRECEIVECHAR];
     bool bRet = false;
     char chError[50];
+    std::map<int,int>::iterator itmapCode;
 
     bytesAvailable = DataReceived();
     if(bytesAvailable > 0)
@@ -179,10 +180,10 @@ bool CEWUSBSerial::Control(int *iEWUSBSetLearnChannel)
 
                 if(m_iCode != iCode || m_iButton != iButton)
                 {                       
-                    m_itmapCode = m_mapCode.find(iCode);
-                    if(m_itmapCode != m_mapCode.end())
+                    itmapCode = m_mapCode.find(iCode);
+                    if(itmapCode != m_mapCode.end())
                     {
-                        m_iChannel= m_itmapCode->second;
+                        m_iChannel= itmapCode->second;
                         if(m_iChannel > 0 && m_iChannel <= m_pIOGroup->GetEWUSBEingAnz())
                         {
                             if(*iEWUSBSetLearnChannel) // Anlernen aktiviert aber Sender bekannt!
@@ -239,11 +240,13 @@ bool CEWUSBSerial::Control(int *iEWUSBSetLearnChannel)
 
 bool CEWUSBSerial::IsBelegt(int channel)
 {   
+    std::map<int,int>::iterator itmapCode;
     bool bRet = false;
+
     channel = channel - m_pIOGroup->GetEWBoardAnz();
-    for(m_itmapCode = m_mapCode.begin(); m_itmapCode != m_mapCode.end(); m_itmapCode++ )
+    for(itmapCode = m_mapCode.begin(); itmapCode != m_mapCode.end(); itmapCode++ )
     {
-        if(m_itmapCode->second == channel)
+        if(itmapCode->second == channel)
         {
             bRet = true;
             break;
@@ -256,12 +259,13 @@ int CEWUSBSerial::WriteEWTabelle()
 {   
     CReadFile *pReadFile;
     char chBuf[20];
+    std::map<int,int>::iterator itmapCode;
 
     pReadFile = new CReadFile;
     pReadFile->OpenWrite(pProgramPath, 18, 0);
-    for(m_itmapCode = m_mapCode.begin(); m_itmapCode != m_mapCode.end(); m_itmapCode++)
+    for(itmapCode = m_mapCode.begin(); itmapCode != m_mapCode.end(); itmapCode++)
     {
-        sprintf(chBuf, "%d;%d\n", m_itmapCode->first, m_itmapCode->second);
+        sprintf(chBuf, "%d;%d\n", itmapCode->first, itmapCode->second);
         pReadFile->WriteLine(chBuf);
     }
     pReadFile->Close();
@@ -294,14 +298,15 @@ int CEWUSBSerial::ReadEWTabelle()
 
 void CEWUSBSerial::ResetEingChannel(int channel)
 {
+    std::map<int,int>::iterator itmapCode;
     channel = channel - m_pIOGroup->GetEWBoardAnz();
     if(channel > 0 && channel <= m_pIOGroup->GetEWUSBEingAnz())
     {
-        for(m_itmapCode = m_mapCode.begin(); m_itmapCode != m_mapCode.end(); m_itmapCode++)
+        for(itmapCode = m_mapCode.begin(); itmapCode != m_mapCode.end(); itmapCode++)
         {
-            if(m_itmapCode->second == channel)
+            if(itmapCode->second == channel)
             {
-                m_mapCode.erase(m_itmapCode->first);
+                m_mapCode.erase(itmapCode->first);
                 break;
             }
             

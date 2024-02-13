@@ -55,10 +55,6 @@ string CBerechneBase::GetString()
 
 //
 //  write : Anzeige von Resultaten
-CBerechneWrite::CBerechneWrite()
-{
-    
-}
 void CBerechneWrite::init(CReadFile *pReadFile, void *pIOGroup)
 {
     m_nr = 0;
@@ -73,6 +69,29 @@ void CBerechneWrite::SetState(int iWert)
     syslog(LOG_INFO, str.c_str());
 }
 
+//
+// writeMessage
+void CBerechneWriteMessage::init(CReadFile *pReadFile, void *pIOGroup)
+{
+    m_nr = pReadFile->GetLine();
+    m_pIOGroup = pIOGroup;
+
+    ((CIOGroup *)m_pIOGroup)->SetFormatText(&m_FormatText, pReadFile);
+}
+
+void CBerechneWriteMessage::SetState(int iWert)
+{
+    CWriteMessage writeMessage;
+    std::map<int, CWriteMessage>::iterator it;
+    CIOGroup * pIOGroup = (CIOGroup *)m_pIOGroup;
+    
+    writeMessage.m_strText = m_FormatText.GetString();
+    it = pIOGroup->m_mapWriteMessage.find(m_nr);
+    if(it != pIOGroup->m_mapWriteMessage.end())
+        it->second = writeMessage;
+    else
+        pIOGroup->m_mapWriteMessage.insert({m_nr, writeMessage});
+}
 //
 // Integer Merker
 //

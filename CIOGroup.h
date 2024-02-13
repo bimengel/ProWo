@@ -27,6 +27,12 @@
 #define ADDRUARTIS750       0x48
 #define EINGDELAYTIME       10 // Entprellzeit der Eingänge in msek
 
+class CWriteMessage {
+
+public:
+    string m_strText;
+};
+
 class CIOGroup
 {
 public:
@@ -49,6 +55,7 @@ public:
     CHistory *m_pHistory;
     CSonos *m_pSonos; 
     CAlarmClock *m_pAlarmClock;
+    std::map<int,class CWriteMessage> m_mapWriteMessage;  
 
 protected:
     int m_iMaxAnzModBusClient; 
@@ -136,7 +143,7 @@ protected:
     int m_iMaxAnzSensor;
   
     CHeizung *m_pHeizung;
-    
+
 public:
     CIOGroup();
     ~CIOGroup();
@@ -200,6 +207,7 @@ public:
     int GetTest();
     CAlarmClock * GetAlarmClockAddress();
     void SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile);
+    int GetAnzWriteMessage();
     
 protected:
     int readAnzeige();

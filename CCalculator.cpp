@@ -758,6 +758,40 @@ void CConfigCalculator::number()
             else
                 m_pReadFile->Error(129);
         }
+        else if(strncmp(text, "GSM", 3) == 0 && strlen(text) == 3)   
+        {
+            if(m_pIOGroup->m_pGsm != NULL)
+            {
+                if(*m_cPtr++ == ':')
+                {
+                    for(i=0; i < 25; i++)
+                    {
+                        if(isalpha(cur()))
+                        {
+                            text[i] = toupper(cur());
+                            m_cPtr++;
+                        }
+                        else
+                        {   text[i] = 0;
+                            break;
+                        }
+                    }
+                    if(strncmp(text, "ERROR", 5) == 0 && strlen(text) == 5) 
+                        i = 1;
+                    else
+                        m_pReadFile->Error(100);   
+
+                    COperGsm *pOper = new COperGsm;
+                    pOper->setType(1);
+                    pOper->SetOper(m_pIOGroup->m_pGsm, i);
+                    AddOperToList(pOper);
+                }
+                else
+                    m_pReadFile->Error(107);
+            }
+            else
+                m_pReadFile->Error(67);
+        }    
         else if(strncmp(text, "TEMPMIN", 7) == 0 && strlen(text) == 7)
         {
             iStatisticWS = TEMPMIN;

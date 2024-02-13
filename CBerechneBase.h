@@ -66,13 +66,21 @@ protected:
 class CBerechneWrite:public CBerechneBase
 {
 public:
-    CBerechneWrite();
     void init(CReadFile *pReadFile, void *pIOGroup);
     virtual void SetState(int iWert);
 protected:
     CFormatText m_FormatText;
 };
 
+class CBerechneWriteMessage:public CBerechneBase
+{
+public:
+    void init(CReadFile *pReadFile, void *pIOGroup);
+    virtual void SetState(int iWert);
+protected:
+    CFormatText m_FormatText;
+    void * m_pIOGroup; 
+};
 
 class CBerechneAusg : public CBerechneBase
 {

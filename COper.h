@@ -172,10 +172,7 @@ class COperIntegerW:public COperInteger
 {
     virtual int resultInt();
 };
-
-//
 //  Heizkörper
-//
 class COperHK : public COperBase
 {
 public:
@@ -185,7 +182,7 @@ public:
 protected:
     CHeizKoerper *m_pHeizKoerper;
 };
-
+// Sensor
 class COperSTHQ : public COperBase
 {
 public:
@@ -196,23 +193,21 @@ public:
 protected:
     CSensor *m_pTempSensor;
 };
-
-//
 // Temperatur
-//
 class COperTEMP : public COperSTHQ
 {
     virtual int resultInt();
 };
-
+// Feuchtigkeit
 class COperHUM : public COperSTHQ
 {
     virtual int resultInt();
 };
-
+// Luftqualität
 class COperQUAL : public COperSTHQ
 {
     virtual int resultInt();
 };
+
 
 #endif // _COPER_H_

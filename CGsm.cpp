@@ -796,7 +796,17 @@ string CGsm::GetProvider()
 	return m_strProvider;
 }
 
-string CGsm::GetError()
+int CGsm::GetError()
+{
+    int iRet;
+
+    if(m_strError.empty())
+        iRet = 0;
+    else
+        iRet = 1;
+    return iRet;
+}
+string CGsm::GetErrorString()
 {
     int len;
     
@@ -1161,4 +1171,34 @@ int COperSMS::resultInt()
 void COperSMS::SetOper(CSMSEmpf *pPtr)
 {   
     m_pSMSEmpf = pPtr;
+}
+
+// GSM
+COperGsm::COperGsm()
+{
+    m_pGsm = NULL;
+    m_iFct = 0;
+}
+void COperGsm::SetOper(CGsm *pGsm, int iFct)
+{
+    m_pGsm = pGsm;
+    m_iFct = iFct;
+}
+string COperGsm::resultString()
+{
+    string str;
+
+    switch(m_iFct) {
+        case 1: // Error
+            str = m_pGsm->GetErrorString();
+            break;
+        default:
+            str = "";
+            break;
+    }
+    return str;
+}
+int COperGsm::resultInt()
+{
+    return m_pGsm->GetError();
 }

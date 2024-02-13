@@ -414,6 +414,7 @@ string CAlarm::GetParamString(int fct)
                 str = m_pAlarmSensor[i-1].GetBez();
             break;
         default:
+            str = to_string(GetParamInt(fct));
             break;
     }
     return str;

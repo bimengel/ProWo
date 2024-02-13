@@ -83,7 +83,8 @@ public:
 	int GetSignal();
 	string GetRegistered();
 	string GetProvider();
-	string GetError();
+	string GetErrorString();
+	int GetError(); // 0 oder 1 je ob ein Fehler vorhanden ist oder nicht
     int GetAnzSMSEmpf();
     CSMSEmpf * GetAddressSMSEmpf(int nr);
 	
@@ -138,5 +139,18 @@ private:
     CSMSEmpf * m_pSMSEmpf;
 };
 
+// GSM - Modul
+class COperGsm : public COperBase
+{
+public:
+    COperGsm();
+    void SetOper(CGsm *pGsm, int iFct);
+	virtual string resultString();
+	virtual int resultInt();
+
+protected:
+    CGsm *m_pGsm;
+	int m_iFct;
+};
 
 #endif // _CGSM_H_

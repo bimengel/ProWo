@@ -382,4 +382,3 @@ int COperQUAL::resultInt()
 {
     return m_pTempSensor->GetVocSignal();
 }
-

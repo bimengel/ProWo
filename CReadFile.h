@@ -56,6 +56,8 @@ public:
     bool SetFilePos(long lPos);
     string GetError();
     bool IsDigit();
+    int GetLine();
+    
 protected:
     int m_iType;
     int m_iLen;

@@ -622,3 +622,8 @@ string CReadFile::GetError()
 {
     return m_strError;
 }
+
+int CReadFile::GetLine()
+{
+    return m_iZeile;
+}
