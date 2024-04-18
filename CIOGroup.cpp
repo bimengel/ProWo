@@ -1425,7 +1425,7 @@ void CIOGroup::LesParam(char *pProgramPath)
                 pcc->eval(str.c_str(), this, type);
                 anz = pcc->GetAnzOper();
                 break;
-            case 9: // write
+            case 9: // write           
             case 17: // writeMessage
                 // write wird immer ausgeführt, es gibt keine Operanten und Operatoren
                 // deshalb wird die Zeichenkett "1" angegeben
@@ -1617,9 +1617,14 @@ void CIOGroup::LesParam(char *pProgramPath)
                     pOperBase[i] = pcc->GetOper(i);                 
                 break;
             case 17: //writeMessage
+                nbre = m_pReadFile->ReadZahl();
+                if(nbre < 1 || nbre > 2)
+                    m_pReadFile->Error(107); 
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(62);              
                 pOperBase = new COperBase *[anz];
                 pWriteMessage = new CBerechneWriteMessage;
-                pWriteMessage->init(m_pReadFile, (void *)this);
+                pWriteMessage->init(m_pReadFile, (void *)this, nbre);
                 pWriteMessage->setOper(pOperBase);
                 m_pBerechne[idxBerechne] = pWriteMessage;
                 for(i=0; i < anz; i++)
@@ -4213,9 +4218,12 @@ void CIOGroup::SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile)
     pFormatText->SetString(str);
     for(iPos = 0, iParam = 0; iPos != string::npos ;)
     {
-        iPos = str.find("#", iPos+1);
+        iPos = str.find("#", iPos);
         if(iPos != string::npos)
+        {   
             iParam++;
+            iPos++;
+        }
     }  
     iPos = 0;
     if(iParam)
@@ -4223,9 +4231,9 @@ void CIOGroup::SetFormatText(CFormatText *pFormatText, CReadFile *pReadFile)
         pFormatText->Init(iParam);
         pReadFile->ReadSeparator();                    
         
-        for(iPosParam=0 ; iPos < iParam; iPos++)
+        for(iPosParam=0 ; iPos < iParam; iPos++, iPosParam++)
         {
-            iPosParam = str.find("#", iPosParam+1);
+            iPosParam = str.find("#", iPosParam);
             ch = str[iPosParam+1];
             if(ch != 's' && ch != 'd')
                 pReadFile->Error(107);

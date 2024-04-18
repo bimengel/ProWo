@@ -71,11 +71,11 @@ void CBerechneWrite::SetState(int iWert)
 
 //
 // writeMessage
-void CBerechneWriteMessage::init(CReadFile *pReadFile, void *pIOGroup)
+void CBerechneWriteMessage::init(CReadFile *pReadFile, void *pIOGroup, int iAnzeigeArt)
 {
     m_nr = pReadFile->GetLine();
     m_pIOGroup = pIOGroup;
-
+    m_iAnzeigeArt = iAnzeigeArt;
     ((CIOGroup *)m_pIOGroup)->SetFormatText(&m_FormatText, pReadFile);
 }
 
@@ -88,7 +88,15 @@ void CBerechneWriteMessage::SetState(int iWert)
     writeMessage.m_strText = m_FormatText.GetString();
     it = pIOGroup->m_mapWriteMessage.find(m_nr);
     if(it != pIOGroup->m_mapWriteMessage.end())
-        it->second = writeMessage;
+    {
+        switch(m_iAnzeigeArt) {
+            case 1: // Message überschreiben
+                it->second = writeMessage;
+                break;
+            default:
+                break;
+        }
+    }
     else
         pIOGroup->m_mapWriteMessage.insert({m_nr, writeMessage});
 }

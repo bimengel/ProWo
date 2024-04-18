@@ -75,11 +75,12 @@ protected:
 class CBerechneWriteMessage:public CBerechneBase
 {
 public:
-    void init(CReadFile *pReadFile, void *pIOGroup);
+    void init(CReadFile *pReadFile, void *pIOGroup, int iAnzeigeArt);
     virtual void SetState(int iWert);
 protected:
     CFormatText m_FormatText;
     void * m_pIOGroup; 
+    int m_iAnzeigeArt;
 };
 
 class CBerechneAusg : public CBerechneBase

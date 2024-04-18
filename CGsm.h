@@ -86,6 +86,7 @@ public:
 	string GetErrorString();
 	int GetError(); // 0 oder 1 je ob ein Fehler vorhanden ist oder nicht
     int GetAnzSMSEmpf();
+	bool GetSMS();
     CSMSEmpf * GetAddressSMSEmpf(int nr);
 	
 private:
@@ -112,7 +113,9 @@ private:
 	string m_strError;	 // NULL oder die letzte Fehlermeldung
     string m_strSMSCommand;
     string m_strPin;
-    bool m_bFirst;
+    int m_iError; 		// =0 kein Fehler
+						// =1 nach einer Stunde oder bei Sendeversuch mit AT-Kommando versuchen
+						// =2 nach einer Stunde oder bei Sendeversuch Hardware-Reset
     
     pthread_mutex_t m_mutexGsmSendFifo;	
 };
