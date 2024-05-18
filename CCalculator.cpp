@@ -452,22 +452,24 @@ void CConfigCalculator::number()
                         break;
                     }
                 }
-                i = 0;
                 if(strncmp(text, "UHRZEIT", 7) == 0 && strlen(text) == 7)
                     i = 1;
                 else if(strncmp(text, "DATUM", 5)== 0 && strlen(text) == 5)
                     i = 2;
-                else if(strlen(text) == 4)
-                {
-                    if(strncmp(text, "MINW", 4) == 0)
-                        i = 3;
-                    else if( strncmp(text, "STDW", 4) == 0)
-                        i = 4;
-                    else if(strncmp(text, "TAGW", 4) == 0)
-                        i = 5;
-                    else
-                        i = 0;
-                }
+                else if(strncmp(text, "MINW", 4) == 0 && strlen(text) == 4)
+                    i = 3;
+                else if( strncmp(text, "STDW", 4) == 0 && strlen(text) == 4)
+                    i = 4;
+                else if(strncmp(text, "TAGW", 4) == 0 && strlen(text) == 4)
+                    i = 5;
+                else if(strncmp(text, "WOCHENW", 7) == 0 && strlen(text) == 7)
+                    i = 6;
+                else if(strncmp(text, "MONATW", 6) == 0 && strlen(text) == 6)
+                    i = 7;     
+                else if(strncmp(text, "JAHRW", 5) == 0 && strlen(text) == 5)
+                    i = 8;  
+                else
+                    i = 0;
                 if(i)
                 {
                     COperUhr *pOper = new COperUhr;

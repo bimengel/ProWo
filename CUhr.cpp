@@ -64,6 +64,7 @@ void CUhr::aktUhr()
     pthread_mutex_lock(&m_mutexUhr);    
     m_iUhrYearAlt = m_iUhrYear;
     m_iUhrMonAlt = m_iUhrMon;
+    m_iUhrWochenTagAlt = m_iUhrWochenTag;
     m_iUhrTagAlt = m_iUhrTag;
     m_iUhrStundeAlt = m_iUhrStunde;
     m_iUhrMinAlt = m_iUhrMin;
@@ -142,7 +143,50 @@ bool CUhr::TagesTakt()
         bRet = true;
     pthread_mutex_unlock(&m_mutexUhr);    
     return bRet;
-}   
+} 
+
+//
+//  Diese Funktion gibt true zurück wenn die Woche gewechselt hat
+//
+bool CUhr::WochenTakt()
+{
+    bool bRet = false;
+    
+    pthread_mutex_lock(&m_mutexUhr);    
+    if(m_iUhrWochenTag  <  m_iUhrWochenTagAlt)
+        bRet = true;
+    pthread_mutex_unlock(&m_mutexUhr);    
+    return bRet;
+} 
+
+//
+//  Diese Funktion gibt true zurück wenn die Woche gewechselt hat
+//
+bool CUhr::MonatsTakt()
+{
+    bool bRet = false;
+    
+    pthread_mutex_lock(&m_mutexUhr);    
+    if(m_iUhrMon  !=  m_iUhrMonAlt)
+        bRet = true;
+    pthread_mutex_unlock(&m_mutexUhr);    
+    return bRet;
+} 
+
+//
+//  Diese Funktion gibt true zurück wenn die Woche gewechselt hat
+//
+bool CUhr::JahresTakt()
+{
+    bool bRet = false;
+    
+    pthread_mutex_lock(&m_mutexUhr);    
+    if(m_iUhrYear  !=  m_iUhrYearAlt)
+        bRet = true;
+    pthread_mutex_unlock(&m_mutexUhr);    
+    return bRet;
+} 
+
 //
 //  die aktuelle Uhrzeit des "Programms" lesen (time_t)
 //
@@ -662,6 +706,15 @@ int COperUhr::resultInt()
                 break;
             case 5: // Tagwechsel
                 iRet = m_pUhr->TagesTakt();
+                break;
+            case 6: // Wochenwechsel
+                iRet = m_pUhr->WochenTakt();
+                break;
+            case 7: // Monatswechsel
+                iRet = m_pUhr->MonatsTakt();
+                break;
+            case 8: // Jahreswechsel
+                iRet = m_pUhr->JahresTakt();
                 break;
             default:
                 break;

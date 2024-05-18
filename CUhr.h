@@ -36,6 +36,9 @@ public:
     bool MinutenTakt();
     bool StundenTakt();
     bool TagesTakt();
+    bool WochenTakt();
+    bool MonatsTakt();
+    bool JahresTakt();
     int getLetzteTag();
     int getLetzteMonat();
     int getTag();
@@ -79,6 +82,7 @@ protected:
     int m_iUhrTag;	    // aktueller Tag
     int m_iUhrTagAlt;
     int m_iUhrWochenTag;     // 0 - 6 Tage nach dem Sonntag
+    int m_iUhrWochenTagAlt;
     int m_iUhrMon;          // aktueller Monat
     int m_iUhrMonAlt;
     int m_iUhrYear;         // aktuelles Jahr
