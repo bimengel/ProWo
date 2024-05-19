@@ -876,7 +876,7 @@ void CConfigCalculator::LesIntervalDiff(int *iInterval, int *iDiff)
             *iInterval = 0;
         else if(strncmp(text, "TAG", 3) == 0 && strlen(text) == 3)
             *iInterval = 1;
-        else if(strncmp(text, "WOCHE", 8) == 0 && strlen(text) == 8)
+        else if(strncmp(text, "WOCHE", 5) == 0 && strlen(text) == 5)
             *iInterval = 2;
         else if(strncmp(text, "MONAT", 5) == 0 && strlen(text) == 5)
             *iInterval = 3;
