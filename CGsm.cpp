@@ -165,8 +165,6 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                 sprintf((char *)m_chSend, "GSM - ERROR:  %s", (char *)m_chEmpf);
                 syslog(LOG_ERR, (char *)m_chSend);
                 m_strError = string((char *)m_chEmpf, m_iEmpf);
-                m_iState = GSMERROR;
-                m_iError = 1;
                 if(m_iSubState == GSMSENDGSMNR || m_iSubState == GSMSENDSMSTEXT)
                 {
                     // falsche Handynummer oder Text, aus der Fifo-queue entfernen
@@ -174,9 +172,13 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                     m_SendFifo.pop();
                     pthread_mutex_unlock(&m_mutexGsmSendFifo); 
                 }
+                m_iState = GSMERROR;
+                m_iSubState = GSMNOTDEFINED;
+                m_iError = 1;                
             }             
             if(SearchString((char *)m_chEmpf, (char *)"OK", m_iEmpf) || m_chEmpf[0] == '>')
             {
+                syslog(LOG_INFO, (char *)m_chEmpf);
                 switch(m_iSubState) {
                 case GSMSENDAT:
                     // Get Factory settings
@@ -429,6 +431,11 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                         if(m_iSubState != GSMDELETEALLSMS)
                             m_iSubState = GSMNOTDEFINED;
                     }
+                    else if(SearchString((char *)m_chEmpf, (char *)"ERROR", m_iEmpf))
+                    {
+                        syslog(LOG_ERR, (char *)m_chEmpf);
+                        m_iSubState = GSMNOTDEFINED;
+                    }
                 } 
                 break;
             case GSMDELETEALLSMS:
@@ -437,6 +444,11 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                 {
                     if(SearchString((char *)m_chEmpf, (char *)"OK", m_iEmpf) || m_chEmpf[0] == '>') 
                         m_iSubState = GSMNOTDEFINED;
+                    else if(SearchString((char *)m_chEmpf, (char *)"ERROR", m_iEmpf))  
+                    {
+                        syslog(LOG_ERR, (char *)m_chEmpf);
+                        m_iSubState = GSMNOTDEFINED;
+                    }
                 }
                 break;
             default:                    
@@ -483,7 +495,10 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 		break;
 	}	
 	if(iSend)
+    {
+        syslog(LOG_INFO, (char *)m_chSend);
         Send(iSend);
+    }
     
     return bRet;
 }
@@ -498,6 +513,7 @@ bool CGsm::GetSMS()
     {    
         iLen = sprintf((char *)m_chSend, "AT+CMGD=1,4"); // alle SMS löschen
         iEmpf = m_iEmpf;
+        syslog(LOG_INFO, (char *)m_chSend);
         Send(iLen);
         iPos = 0;
         m_iSubState = GSMDELETEALLSMS;
