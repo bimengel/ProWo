@@ -246,7 +246,7 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
             m_pUhr->getDatumTag(pHeizProgramm->m_iDatum, &iJahr, &iMonat, &iTag);
             iStunde = pHeizProgramm->m_iUhrzeit / 60;
             iMinute = pHeizProgramm->m_iUhrzeit % 60;
-            str = "<br>(bis " + to_string(iTag) + "." + strZweiStellen(iMonat) + "." + to_string(iJahr)
+            str = "<br>bis " + to_string(iTag) + "." + strZweiStellen(iMonat) + "." + to_string(iJahr)
                              + " " +  strZweiStellen(iStunde) + "h" + strZweiStellen(iMinute) + "\"";
         } 
         else

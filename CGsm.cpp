@@ -943,7 +943,11 @@ int CUartI2C::ReadLen(unsigned char *ptr, int iPos)
                 continue;
             *(ptr + iPos) = (unsigned char)BSC_ReadReg (1, m_pBoardAddr->Addr3, RHR);
 			if(*(ptr+iPos) != 0x0D && *(ptr+iPos) != 0x0A)
-				iPos++;
+            {
+                if(!isascii(*(ptr + iPos)))
+                    *(ptr + iPos) = '@';
+                iPos++;
+            }
             else if(*(ptr+iPos) == 0x0D)
                 break;
 		} 
