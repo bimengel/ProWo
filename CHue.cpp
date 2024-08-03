@@ -123,7 +123,7 @@ size_t write_data(void *buffer, size_t size, size_t nmemb, void *userp)
     }
 */
 
-size_t read_data(void *ptr, size_t size, size_t nmemb, void *userdata)
+size_t read_Huedata(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
 
     size_t retcode;
@@ -179,7 +179,7 @@ void CHue::Control()
                 lSize = snprintf(text, MSGSIZE, "{\"on\":false}");
             curl_easy_setopt(m_pCurl, CURLOPT_URL, strBuffer.c_str());
             curl_easy_setopt(m_pCurl, CURLOPT_UPLOAD, 1L);
-            curl_easy_setopt(m_pCurl, CURLOPT_READFUNCTION, read_data);
+            curl_easy_setopt(m_pCurl, CURLOPT_READFUNCTION, read_Huedata);
             curl_easy_setopt(m_pCurl, CURLOPT_READDATA, (void *)text);
             curl_easy_setopt(m_pCurl, CURLOPT_INFILESIZE, lSize);
             // Perform the request, res will get the return code 
@@ -197,7 +197,7 @@ CHue::CHue(char * pIOGroup)
     m_strUser.clear();
     m_strIP.clear();
     m_strHueConnect.clear();
-    m_iAnzahl = 0;
+    m_iAnzahlEntity = 0;
     m_pIOGroup = pIOGroup;
     m_pHueEntity = new CHueEntity *[((CIOGroup *)pIOGroup)->m_iMaxAnzHueEntity];
     pthread_mutex_init(&m_mutexHueFifo, NULL);      
@@ -214,12 +214,12 @@ int CHue::SetEntity(int typ, int ID)
 {
     int error = 0;
     CHueEntity * pHueEntity;
-    if(m_iAnzahl < ((CIOGroup *)m_pIOGroup)->m_iMaxAnzHueEntity) 
+    if(m_iAnzahlEntity < ((CIOGroup *)m_pIOGroup)->m_iMaxAnzHueEntity) 
     {
         pHueEntity = new CHueEntity;
-        pHueEntity->init(m_iAnzahl+1, typ, ID, (char*)(this));
-        m_pHueEntity[m_iAnzahl] = pHueEntity;
-        m_iAnzahl++;
+        pHueEntity->init(m_iAnzahlEntity+1, typ, ID, (char*)(this));
+        m_pHueEntity[m_iAnzahlEntity] = pHueEntity;
+        m_iAnzahlEntity++;
     }
     else
         error = 89;
@@ -262,9 +262,9 @@ int CHue::IsDefined()
     return error;
 }
 
-int CHue::GetAnz()
+int CHue::GetAnzEntity()
 {
-    return m_iAnzahl;
+    return m_iAnzahlEntity;
 }
 
 void CHue::InsertFifo(CHueProperty * pHueProperty)
@@ -300,6 +300,7 @@ CHueEntity::CHueEntity()
     m_iTyp = 0;
     m_iID = 0;
     m_iState = 0;
+    m_iBrightness = 255;
     m_pHue = NULL;
     m_iNr = 0;
 }
@@ -317,22 +318,21 @@ void CHueEntity::init(int iNr, int typ, int id, char *pHue)
 
 void CHueEntity::SetState(int state)
 {
-    if(!(state % 256))
-        state = 0;
-    m_iState = state;
     CHueProperty HueProperty;
+    m_iState = state % 256;
+    m_iBrightness =  state / 256;
     HueProperty.m_iNr = m_iNr;
     HueProperty.m_iTyp = m_iTyp;
     HueProperty.m_iID = m_iID;
-    HueProperty.m_iState = m_iState % 256;
-    HueProperty.m_iBrightness  = m_iState / 256;
+    HueProperty.m_iState = m_iState;
+    HueProperty.m_iBrightness  = m_iBrightness;
     HueProperty.m_iSource = 1;
     ((CHue *)m_pHue)->InsertFifo(&HueProperty);
 }
 
 int CHueEntity::GetState()
 {
-    return m_iState; 
+    return m_iBrightness * 256 + m_iState; 
 }
 
 int CHueEntity::GetTyp()
@@ -364,9 +364,9 @@ void CBerechneHue::SetState(int state)
     m_pHueEntity->SetState(state);
 }
 
-void CBerechneHue::init(CHueEntity *pHue)
+void CBerechneHue::init(CHueEntity *pHueEntity)
 {
-    m_pHueEntity = pHue;
+    m_pHueEntity = pHueEntity;
 }
 int CBerechneHue::GetState()
 {

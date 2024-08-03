@@ -26,7 +26,7 @@ CHistoryElement::~CHistoryElement()
 
 //
 //
-CHistory::CHistory(int AnzAusg, int AnzEWAusg, int iAnzHue) 
+CHistory::CHistory(int AnzAusg, int AnzEWAusg, int iAnzHue, int iAnzSomfy) 
 {
     int i, j;
 
@@ -53,7 +53,15 @@ CHistory::CHistory(int AnzAusg, int AnzEWAusg, int iAnzHue)
     }
     else
         m_pHueEnabled = NULL;
-    
+    if(iAnzSomfy)
+    {
+        m_pSomfyEnabled = new bool[iAnzSomfy];
+        for(j=0; j < iAnzSomfy; j++)
+            *(m_pSomfyEnabled + j) = false;
+    }
+    else 
+        m_pSomfyEnabled = NULL;
+    m_iAnzSomfy = iAnzSomfy;
     pthread_mutex_init(&m_mutexHistoryWriteFifo, NULL);
     pthread_mutex_init(&m_mutexHistoryReadFifo, NULL);    
     m_iTag = 0;
@@ -75,6 +83,11 @@ CHistory::~CHistory()
     {
         delete [] m_pHueEnabled;
         m_pHueEnabled = NULL;
+    }
+    if(m_pSomfyEnabled != NULL)
+    {
+        delete [] m_pSomfyEnabled;
+        m_pSomfyEnabled = NULL;
     }
     pthread_mutex_destroy(&m_mutexHistoryWriteFifo);
     pthread_mutex_destroy(&m_mutexHistoryReadFifo);    
@@ -129,6 +142,19 @@ bool CHistory::InitAddHue(int iNr)
         bRet = false;
     return bRet;
 }
+bool CHistory::InitAddSomfy(int iNr)
+{
+    bool bRet;
+    
+    if(iNr >= 0 && iNr <= m_iAnzSomfy)
+    {
+        m_pSomfyEnabled[iNr-1] = true;
+        bRet = true;
+    }
+    else
+        bRet = false;
+    return bRet;
+}
 //
 // Hardware Ausgänge
 // Typ = 1
@@ -174,7 +200,21 @@ void CHistory::Add(CHueProperty *pHueProperty)
     pthread_mutex_unlock(&m_mutexHistoryWriteFifo);
 }
 
-void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pEWAusgFifo, CHue * pHue)
+// Somfy Ausgang
+// Typ = 4
+void CHistory::Add(CSomfyProperty *pSomfyProperty)
+{
+    CHistoryElement HistoryElement;
+    
+    HistoryElement.m_sTyp = 4;
+    HistoryElement.m_time = m_pUhr->getUhrzeit();
+    HistoryElement.m_SomfyProperty = *pSomfyProperty;
+    pthread_mutex_lock(&m_mutexHistoryWriteFifo);
+    m_HistoryWriteFifo.push(HistoryElement);
+    pthread_mutex_unlock(&m_mutexHistoryWriteFifo);
+}
+
+void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pEWAusgFifo, CHue * pHue, CSomfy *pSomfy)
 {
     CReadFile rf;
     int i, iRet, iTag;
@@ -228,6 +268,9 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
             CHueProperty * pHueProperty = NULL;
             if(m_iAnzHue)
                 pHueProperty = new CHueProperty[m_iAnzHue];
+            CSomfyProperty *pSomfyProperty = NULL;
+            if(m_iAnzSomfy)
+                pSomfyProperty = new CSomfyProperty[m_iAnzSomfy];
             char * pAusg = NULL;
             if(m_iAnzAusg)
                 pAusg = new char[m_iAnzAusg / PORTANZAHLCHANNEL];
@@ -271,10 +314,13 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
                                 break;
                             case 3: // Hue
                                 if(m_pHueEnabled[HistoryElement.m_HueProperty.m_iNr-1])                                
-                                {
                                     pHueProperty[HistoryElement.m_HueProperty.m_iNr-1] =
                                             HistoryElement.m_HueProperty;
-                                }
+                                break;
+                            case 4: // Somfy
+                                if(m_pSomfyEnabled[HistoryElement.m_SomfyProperty.m_iNr -1])
+                                    pSomfyProperty[HistoryElement.m_SomfyProperty.m_iNr-1] =
+                                        HistoryElement.m_SomfyProperty;
                                 break;
                             default:
                                 break;
@@ -314,6 +360,15 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
                        pHue->InsertFifo(&pHueProperty[i]);
                    }
                 }
+                // Somfy-Ausgäbe schalten
+                for(i=0; i < m_iAnzSomfy; i++)
+                {
+                    if(m_pSomfyEnabled[i] && pSomfyProperty[i].m_iNr)
+                    {
+                        pSomfyProperty[i].m_iSource = 2;
+                        pSomfy->InsertFifo(&pSomfyProperty[i]);
+                    }
+                }
                 rf.Close();
             }
             else
@@ -328,6 +383,8 @@ void CHistory::ControlFiles(char * pcAusgHistory, queue<struct EWAusgEntity> *pE
                 delete [] pEWAusg;
             if(pHueProperty != NULL)
                 delete [] pHueProperty;
+            if(pSomfyProperty != NULL)
+                delete [] pSomfyProperty;
         }
         pthread_mutex_lock(&m_mutexHistoryReadFifo);
         m_HistoryReadFifo = {};
@@ -408,6 +465,11 @@ CHistoryElement CHistory::Control()
                         HistoryElement.m_sTyp = 0;
                     HistoryElement.m_HueProperty.m_iSource = 2;
                     break;
+                case 4: // Somfy Ausgänge
+                    if(!m_pSomfyEnabled[HistoryElement.m_SomfyProperty.m_iNr-1])
+                        HistoryElement.m_sTyp = 0;
+                    HistoryElement.m_SomfyProperty.m_iSource = 2;                
+                    break;
                 default:
                     HistoryElement.m_sTyp = 0;
                     break;
@@ -484,6 +546,16 @@ bool CHistory::IsHueEnabled(int iNr)
     
     if(m_iDiffTage)
         bRet = *(m_pHueEnabled + (iNr - 1));
+    
+    return bRet;
+}
+
+bool CHistory::IsSomfyEnabled(int iNr)
+{
+    bool bRet = true;
+    
+    if(m_iDiffTage)
+        bRet = *(m_pSomfyEnabled + (iNr - 1));
     
     return bRet;
 }

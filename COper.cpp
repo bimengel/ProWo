@@ -179,16 +179,13 @@ void CInteger::SetState(int state)
 }
 void CInteger::SetLastState()
 {
-    if(GetState())
-        m_iLastState = true;
-    else
-        m_iLastState = false;
+    m_iLastState = m_iValue;
 }
 bool CInteger::GetStateE()
 {
     bool res = false;
 
-    if(m_iValue && !m_iLastState)
+    if(!m_iLastState && m_iValue)
         res = true;
     return res;
 }
@@ -196,7 +193,7 @@ bool CInteger::GetStateA()
 {
     bool res = false;
 
-    if(!m_iValue && m_iLastState)
+    if(m_iLastState && !m_iValue)
         res = true;
     return res;
 }  

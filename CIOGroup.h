@@ -55,6 +55,8 @@ public:
     CHistory *m_pHistory;
     CSonos *m_pSonos; 
     CAlarmClock *m_pAlarmClock;
+    CSomfy *m_pSomfy;
+    int m_iMaxAnzSomfyEntity;
     std::map<int,class CWriteMessage> m_mapWriteMessage;  
 
 protected:

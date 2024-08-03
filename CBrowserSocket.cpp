@@ -472,12 +472,12 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                     Send(str.c_str());
                     switch(pTitel->m_iTyp) {
                     case 1: // Text, Grafik und Status 
-                    case 2: // HUE Lampe oder Gruppe
-                        pthread_mutex_lock(&ext_mutexNodejs);                        
-                        if((int)pTitel->m_pOperState->GetState())
-                            str = "\"status\":\"true\"}";
-                        else
-                            str = "\"status\":\"false\"}";                        
+                    case 10: // HUE Lampe oder Gruppe
+                    case 11: // Hue Schalter mit Slider
+                    case 20: // Somfy nur Schalter
+                    case 21: // Somfy mit Schalter und Slider
+                        pthread_mutex_lock(&ext_mutexNodejs);                     
+                        str = "\"status\":\"" + to_string(pTitel->m_pOperState->GetState()) + "\"}";                       
                         pthread_mutex_unlock(&ext_mutexNodejs);
                         Send(str.c_str());
                         break;
@@ -497,13 +497,13 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, 0);
         if(pTitel != NULL) {
             iLen = ReadBuf(buf, ';');
-            if(iLen && strncmp(buf, "true", iLen) == 0)
-                iState = 1;
-            else
-                iState = 0;            
+            iState = atoi(buf);           
             switch(pTitel->m_iTyp) {
             case 1: // Schalter ist betätigt worden 
-            case 2: // HUE Schalter
+            case 10: // HUE Schalter
+            case 11: // Hue mit Schalter und Slider
+            case 20:
+            case 21:
                 pthread_mutex_lock(&ext_mutexNodejs);
                 if(pTitel->m_pOperChange)
                     pTitel->m_pOperChange->SetState(iState);

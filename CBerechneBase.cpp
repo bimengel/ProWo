@@ -28,6 +28,7 @@ CBerechneBase::CBerechneBase()
 {
     m_pOperBase = NULL;
     m_IfElse = 0;
+    m_nr = 0;
 }
 
 int CBerechneBase::eval()

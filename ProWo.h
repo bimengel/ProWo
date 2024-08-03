@@ -56,6 +56,7 @@ typedef unsigned char BYTE;
 #include "CWStation.h"
 #include "CUhr.h"
 #include "CHue.h"
+#include "CSomfy.h"
 #include "CHistory.h"
 #include "CBrowserEntity.h"
 #include "CBrowserMenu.h"

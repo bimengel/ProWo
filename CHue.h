@@ -33,17 +33,16 @@ public:
     void init(int iNr, int typ, int id, char *pHueFifo);
     int GetState();
     void SetState(int state);
-    void ActualizeState(int state);
     int GetTyp();
     int GetID();
     
 private:
     int m_iNr;      // wird gebraucht für die History
-    int m_iTyp;
+    int m_iTyp;     // 1 = LIGHT, 2 = GROUP
     int m_iID;
-    int m_iState; // on or off und brightness
+    int m_iState; // on or off
+    int m_iBrightness;
     char *m_pHue; 
-
 };
 
 class CHue {
@@ -54,7 +53,7 @@ public:
     void SetIP(string str);
     int SetEntity(int typ, int address);
     int IsDefined();
-    int GetAnz();
+    int GetAnzEntity();
     CHueEntity * GetAddress(int nr);
     void Control();
     void InsertFifo(CHueProperty * phueProperty);
@@ -63,7 +62,7 @@ private:
     string m_strUser;
     string m_strIP;
     string m_strHueConnect;
-    int m_iAnzahl;
+    int m_iAnzahlEntity;
     int m_iAnzHue;
     queue<CHueProperty> m_HueFifo;
     pthread_mutex_t m_mutexHueFifo;	

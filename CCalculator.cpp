@@ -594,9 +594,9 @@ void CConfigCalculator::number()
             else
                 m_pReadFile->Error(81);
         }
-        else if(strncmp(text, "H", 1) == 0 && strlen(text) == 1) // HUE
+        else if(strncmp(text, "HUE", 3) == 0 && strlen(text) == 3) // HUE
         {
-            if(nr > 0 && nr <= m_pIOGroup->m_pHue->GetAnz())
+            if(nr > 0 && nr <= m_pIOGroup->m_pHue->GetAnzEntity())
             {   
                 COperHue *pOper = new COperHue;
                 pOper->setType(1);

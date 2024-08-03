@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
         return 1;
     }
     
-    if(iogrp->m_pHue != NULL)
+    if(iogrp->m_pHue != NULL || iogrp->m_pSomfy != NULL)
         curl_global_init(CURL_GLOBAL_DEFAULT); // or ALL ????
     pLCDDisplay = new CLCDDisplay;
     pLCDDisplay->InitMenu(iogrp, argv[0]);
@@ -399,9 +399,11 @@ void *ThreadProc(void *ptr)
         if(iogrp->m_pAlarm)
             iogrp->m_pAlarm->Control();
         if(iogrp->m_pHistory)
-            iogrp->m_pHistory->ControlFiles(iogrp->GetpcAusgHistory(), iogrp->GetEWAusgFifo(), iogrp->m_pHue);
+            iogrp->m_pHistory->ControlFiles(iogrp->GetpcAusgHistory(), iogrp->GetEWAusgFifo(), iogrp->m_pHue, iogrp->m_pSomfy);
         if(iogrp->m_pSonos)
             iogrp->m_pSonos->Control(m_pUhr->getUhrzeit());
+        if(iogrp->m_pSomfy)
+            iogrp->m_pSomfy->Control();
         if(iogrp->m_pAlarmClock)
             iogrp->m_pAlarmClock->Control(m_pUhr->getUhrmin(), m_pUhr->getWochenTag());            
     }

@@ -58,6 +58,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/CSerial.o \
 	${OBJECTDIR}/CJson.o \
 	${OBJECTDIR}/CSonos.o \
+	${OBJECTDIR}/CSomfy.o \
 	${OBJECTDIR}/CStatistic.o \
 	${OBJECTDIR}/CTH1.o \
 	${OBJECTDIR}/CUhr.o \
@@ -207,6 +208,11 @@ ${OBJECTDIR}/CSonos.o: CSonos.cpp
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 `pkg-config --cflags libcurl` `pkg-config --cflags libmpdclient`   -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/CSonos.o CSonos.cpp
+
+${OBJECTDIR}/CSomfy.o: CSomfy.cpp
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 `pkg-config --cflags libcurl` `pkg-config --cflags libmpdclient`   -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/CSomfy.o CSomfy.cpp
 
 ${OBJECTDIR}/CStatistic.o: CStatistic.cpp
 	${MKDIR} -p ${OBJECTDIR}

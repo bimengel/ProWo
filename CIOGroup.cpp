@@ -249,6 +249,10 @@ void CIOGroup::Control(bool bStart)
                 HistoryElement.m_HueProperty.m_iSource = 2;
                 m_pHue->InsertFifo(&HistoryElement.m_HueProperty);
                 break;
+            case 4: // Somfy Ausgänge
+                HistoryElement.m_SomfyProperty.m_iSource = 2;
+                m_pSomfy->InsertFifo(&HistoryElement.m_SomfyProperty);
+                break;
             default:
                 break;
         }
@@ -1096,6 +1100,21 @@ void CIOGroup::InitGroup()
         case 145:
             str3 = "Bad channel nbr!";
             break;
+        case 146:
+            str3 = "Pin two times";
+            break;
+        case 147:
+            str3 = "Somfy not def.";
+            break;
+        case 148:
+            str3 = "Somfy nbre false";
+            break;
+        case 149: 
+            str3 = "SOMFY > ANZSOMFY";
+            break;
+        case 150:
+            str3 = "Somfy not def.";
+            break;
         default:
             str3 = "error not def.!";
             break;
@@ -1147,6 +1166,7 @@ void CIOGroup::LesParam(char *pProgramPath)
     char buf[256];
     string str, strEW;
     CConfigCalculator *pcc;
+    CSomfyEntity *pSomfyEntity = NULL;    
     COperBase **pOperBase;
     CBerechneAusg *pAusg;
     CBerechneSecTimer *pTimer;
@@ -1164,6 +1184,7 @@ void CIOGroup::LesParam(char *pProgramPath)
     CBerechneAC *pAC;
     CBerechneInteger *pInteger;
     CBerechneWriteMessage *pWriteMessage;
+    CBerechneSomfy *pSomfy;
     bool bS0Zaehler;
 
     m_pReadFile = new CReadFile;
@@ -1228,11 +1249,17 @@ void CIOGroup::LesParam(char *pProgramPath)
                     m_pReadFile->Error(101);
                 type = 12;
             }
-            else if(str.compare("H") == 0)
+            else if(str.compare("HUE") == 0)
             {
-                if(m_pHue == NULL || nbre < 1 || nbre > m_pHue->GetAnz())
+                if(m_pHue == NULL || nbre < 1 || nbre > m_pHue->GetAnzEntity())
                     m_pReadFile->Error(5);
                 type = 11;   
+            }
+            else if(str.compare("SOMFY") == 0)
+            {
+                if(m_pSomfy == NULL || nbre < 1 || nbre > m_pSomfy->GetAnzEntity())
+                    m_pReadFile->Error(148);
+                type = 18;
             }
             else if(str.compare("ZTZAEHLER") == 0)
             {
@@ -1374,6 +1401,7 @@ void CIOGroup::LesParam(char *pProgramPath)
             case 14: // Sonos
             case 15: // Wecker AlarmClock
             case 16: // Integer Merker
+            case 18: // Somfy
                 if(!m_pReadFile->ReadEqual())
                     m_pReadFile->Error(4);
                 break;
@@ -1406,6 +1434,7 @@ void CIOGroup::LesParam(char *pProgramPath)
             case 13: // Alarm
             case 14: // Sonos
             case 16: // Integer Merker
+            case 18: // Somfy
             case 100: // IF
                 m_pReadFile->ReadBuf (buf, ' ');
                 pcc->eval(buf, this, type);
@@ -1413,12 +1442,12 @@ void CIOGroup::LesParam(char *pProgramPath)
                 break;
             case 7: // GSM Nr-Telefon, Nr des Textes der SMS
                 nbre = m_pReadFile->ReadZahl();
-                if(nbre < 1 || nbre > m_pGsm->GetAnzNummern())
+                if(nbre < 1) // || nbre > m_pGsm->GetAnzNummern())
                     m_pReadFile->Error(101);
                 i = 0;
                 if(m_pReadFile->ReadBuf(buf, ',') != -1)
                     i = m_pReadFile->ReadZahl();
-                if(i < 1 || i > m_pGsm->GetAnzTexte())
+                if(i < 1) // || i > m_pGsm->GetAnzTexte())
                     m_pReadFile->Error(47);                
                 nbre = nbre * 1000 + i;
                 str = to_string(nbre);
@@ -1455,7 +1484,24 @@ void CIOGroup::LesParam(char *pProgramPath)
                 str = to_string(nbre);
                 pcc->eval(str.c_str(), this, type);
                 anz = pcc->GetAnzOper();
-                break;            
+                break;  
+/*            case 18: // Somfy
+                pSomfyEntity = m_pSomfy->GetAddress(nbre);
+              nbre = m_pReadFile->ReadZahl();
+                if(nbre < 0 || nbre > 1) // Anzahl verchiedene Typen
+                    m_pReadFile->Error(113);
+                i = 0;
+                if(m_pReadFile->ReadBuf(buf, ',') != -1)
+                {
+                    i = m_pReadFile->ReadZahl();
+                    if(i > 1000)
+                        m_pReadFile->Error(113);
+                }
+                nbre = i * 1000 + nbre;
+                str = to_string(nbre);
+                pcc->eval(str.c_str(), this, type);
+                anz = pcc->GetAnzOper();
+                break;   */                       
             default:
                 break;
             }
@@ -1629,7 +1675,16 @@ void CIOGroup::LesParam(char *pProgramPath)
                 m_pBerechne[idxBerechne] = pWriteMessage;
                 for(i=0; i < anz; i++)
                     pOperBase[i] = pcc->GetOper(i);
-                break;                
+                break; 
+            case 18: // Somfy
+                pOperBase = new COperBase *[anz];
+                pSomfy = new CBerechneSomfy;  
+                pSomfy->setOper(pOperBase);
+                pSomfy->init(nbre,m_pSomfy);
+                m_pBerechne[idxBerechne] = pSomfy;
+                for(i=0; i < anz; i++)
+                    pOperBase[i] = pcc->GetOper(i);                 
+                break;                      
             case 100: // IF
                 pOperBase = new COperBase *[anz];
                 pIfElse = new CBerechneBase;
@@ -1677,39 +1732,39 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
         if(m_pReadFile->ReadLine())
         {
             m_pReadFile->ReadBuf(buf, ':');
-            if(strncmp(buf, "MainboardV1.0", 13) == 0) 
+            if(strncmp(buf, "MainboardV1.0", 13) == 0 && strlen(buf) == 13) 
                 ext_iI2CSwitchType = 1;                
-            else if(strncmp(buf, "MainboardV2.0", 13) == 0)
+            else if(strncmp(buf, "MainboardV2.0", 13) == 0 && strlen(buf) == 13)
                 ext_iI2CSwitchType = 2;
-            else if(strncmp(buf, "WS10", 4) == 0)
+            else if(strncmp(buf, "WS10", 4) == 0 && strlen(buf) == 4)
                 m_iMaxAnzModBusClient++;
-            else if(strncmp(buf,"ABBZAEHLER", 10) == 0)
+            else if(strncmp(buf,"ABBZAEHLER", 10) == 0 && strlen(buf) == 10)
             {   m_iMaxAnzModBusClient++;
                 m_iMaxAnzZaehler++;
             }
-            else if(strncmp(buf, "S0ZAEHLER", 9) == 0
-                    | strncmp(buf, "SUMZAEHLER", 10) == 0
-                    | strncmp(buf, "DIFFZAEHLER", 11) == 0
-                    | strncmp(buf, "ZTZAEHLER", 9) == 0)
+            else if((strncmp(buf, "S0ZAEHLER", 9) == 0 && strlen(buf) == 9)
+                    | (strncmp(buf, "SUMZAEHLER", 10) == 0 && strlen(buf) == 10)
+                    | (strncmp(buf, "DIFFZAEHLER", 11) == 0 && strlen(buf) == 11)
+                    | (strncmp(buf, "ZTZAEHLER", 9) == 0 && strlen(buf) == 9))
                 m_iMaxAnzZaehler++;
-            else if(strncmp(buf, "TQS3", 4) == 0 
-                    | strncmp(buf, "TQS3CHANGE", 10) == 0
-                    | strncmp(buf, "TQS3SQEARCH", 11) == 0)
+            else if((strncmp(buf, "TQS3", 4) == 0 && strlen(buf) == 4)
+                    | (strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
+                    | (strncmp(buf, "TQS3SQEARCH", 11) == 0 && strlen(buf) == 11))
             {   m_iMaxAnzModBusClient++;
                 m_iMaxAnzSensor++;
             }
-            else if(strncmp(buf, "TH1", 3) == 0
-                    | strncmp(buf, "TH1CHANGE", 9) == 0
-                    | strncmp(buf, "TH1SEARCH", 9) == 0)
+            else if((strncmp(buf, "TH1", 3) == 0 && strlen(buf) == 3)
+                    | (strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
+                    | (strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9))
             {
                 m_iMaxAnzModBusClient++;
                 m_iMaxAnzSensor++;
             }
-            else if(strncmp(buf, "HUELIGHT", 8) == 0
-                    | strncmp(buf, "HUEGROUP", 8) == 0)
+            else if((strncmp(buf, "HUELIGHT", 8) == 0 && strlen(buf) == 8)
+                    | (strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8))
                 m_iMaxAnzHueEntity++;
-//            else if(strncmp(buf, "USB_EW", 6) == 0)
-//                buf[0] = 0;
+            else if(strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13)
+                m_iMaxAnzSomfyEntity++;
         }
         else
             break;
@@ -1746,7 +1801,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
         if(m_pReadFile->ReadLine())
         {
             m_pReadFile->ReadBuf(buf, ':');
-            if(strncmp(buf, "USB_EW", 6) == 0)
+            if(strncmp(buf, "USB_EW", 6) == 0 && strlen(buf) == 6)
             {   int baudrate, bits, stops;
                 char parity;
                 str = m_pReadFile->ReadText(',');
@@ -1782,7 +1837,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(pos)
                     m_pReadFile->Error(136+pos);
             }
-            else if(strncmp(buf, "Integer", 7) == 0) 
+            else if(strncmp(buf, "Integer", 7) == 0 && strlen(buf) == 7) 
             {
                 pos = m_pReadFile->ReadNumber ();
                 if(pos < 0)
@@ -1790,22 +1845,22 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_IntegerAnz = pos;               
             }
-            else if(strncmp(buf, "HUEUSER", 6) == 0) 
+            else if(strncmp(buf, "HUEUSER", 7) == 0 && strlen(buf) == 7) 
             {
                 if(m_pHue == NULL)
                     m_pHue = new CHue((char *)this);
                 m_pHue->SetUser(m_pReadFile->ReadText());
             }
-            else if(strncmp(buf, "HUEIP", 5) == 0)  
+            else if(strncmp(buf, "HUEIP", 5) == 0 && strlen(buf) == 5)  
             {
                 if(m_pHue == NULL)
                     m_pHue = new CHue((char *)this);
                 m_pHue->SetIP(m_pReadFile->ReadText());
             }
-            else if(strncmp(buf, "HUEGROUP", 8) == 0)
+            else if(strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8)
             {
                 if(m_pHue == NULL)
-                    error = 92;
+                    error = 114;
                 else
                     error = m_pHue->IsDefined();
                 if(error)
@@ -1816,10 +1871,10 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(error)
                     m_pReadFile->Error(error);
             }            
-            else if(strncmp(buf, "HUELIGHT", 8) == 0)
+            else if(strncmp(buf, "HUELIGHT", 8) == 0 && strlen(buf) == 8)
             {
                 if(m_pHue == NULL)
-                    error = 92;
+                    error = 114;
                 else
                     error = m_pHue->IsDefined();
                 if(error)
@@ -1830,7 +1885,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(error)
                     m_pReadFile->Error(error);
             }
-            else if(strncmp(buf, "WS10", 4) == 0)
+            else if(strncmp(buf, "WS10", 4) == 0 && strlen(buf) == 4)
             {
                 address = m_pReadFile->ReadNumber ();
                 if(m_pModBus != NULL)
@@ -1847,7 +1902,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(38);
             }
-            else if(strncmp(buf, "TEST", 4) == 0)
+            else if(strncmp(buf, "TEST", 4) == 0 && strlen(buf) == 4)
             {
                 pos = m_pReadFile->ReadNumber ();
                 switch (pos) {
@@ -1866,7 +1921,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     break;
                 }
             }
-            else if(strncmp(buf, "TQS3SEARCH", 10) == 0)
+            else if(strncmp(buf, "TQS3SEARCH", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -1894,7 +1949,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(64);
 
             }
-            else if(strncmp(buf, "TQS3CHANGE", 10) == 0)
+            else if(strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzSensor  < m_iMaxAnzSensor)
                 {
@@ -1924,7 +1979,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }
-            else if(strncmp(buf, "TQS3", 4) == 0)
+            else if(strncmp(buf, "TQS3", 4) == 0 && strlen(buf) == 4)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -1955,7 +2010,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }
-            else if(strncmp(buf, "TH1SEARCH", 10) == 0)
+            else if(strncmp(buf, "TH1SEARCH", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -1983,7 +2038,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(64);
 
             }
-            else if(strncmp(buf, "TH1CHANGE", 10) == 0)
+            else if(strncmp(buf, "TH1CHANGE", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -2013,19 +2068,19 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }  
-            else if(strncmp(buf, "TH1LEDOFF", 6) == 0)
+            else if(strncmp(buf, "TH1LEDOFF", 6) == 0 && strlen(buf) == 6)
             {
                 if(m_iAnzSensor)
                     m_pReadFile->Error(124); // define bef. Sensor
                 iTH1Led = 1;
             }
-            else if(strncmp(buf, "TH1TEST", 7) == 0)
+            else if(strncmp(buf, "TH1TEST", 7) == 0 && strlen(buf) == 7)
             {
                 if(m_iAnzSensor)
                     m_pReadFile->Error(124); // define bef. Sensor
                 iTH1I2CTakt = 1;
             }            
-            else if(strncmp(buf, "TH1", 3) == 0)
+            else if(strncmp(buf, "TH1", 3) == 0 && strlen(buf) == 3)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -2061,11 +2116,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             } 
-            else if(strncmp(buf, "SUMZAEHLER", 10) == 0
-               || strncmp(buf, "DIFFZAEHLER", 11) == 0)
+            else if((strncmp(buf, "SUMZAEHLER", 10) == 0 && strlen(buf) == 10)
+                   || (strncmp(buf, "DIFFZAEHLER", 11) == 0 && strlen(buf) == 11))
             {
                 int type = 2;
-                if(strncmp(buf, "SUMZAEHLER", 10) == 0)
+                if(strncmp(buf, "SUMZAEHLER", 10) == 0 && strlen(buf) == 10)
                     type = 1;
 
                 if(m_iAnzZaehler < m_iMaxAnzZaehler)
@@ -2092,7 +2147,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(37);
             }
-            else if(strncmp(buf, "S0ZAEHLER", 9) == 0)
+            else if(strncmp(buf, "S0ZAEHLER", 9) == 0 && strlen(buf) == 9)
             {
                 if(m_iAnzZaehler < m_iMaxAnzZaehler)
                 {
@@ -2110,7 +2165,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(37);
             }
-            else if(strncmp(buf, "ZTZAEHLER", 9) == 0)
+            else if(strncmp(buf, "ZTZAEHLER", 9) == 0 && strlen(buf) == 9)
             {
                 if(m_iAnzZaehler < m_iMaxAnzZaehler)
                 {
@@ -2128,7 +2183,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(37);
             }            
-            else if(strncmp(buf, "ABBZAEHLER", 10) == 0)
+            else if(strncmp(buf, "ABBZAEHLER", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzZaehler < m_iMaxAnzZaehler)
                 {
@@ -2160,7 +2215,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(66);
 
             }
-            else if(strncmp(buf, "MODBUS", 6) == 0)
+            else if(strncmp(buf, "MODBUS", 6) == 0 && strlen(buf) == 6)
             {
                 address = m_pReadFile->ReadNumber ();
                 if(m_pModBus == NULL)
@@ -2196,9 +2251,9 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             {	int nr;
                 int baudrate, bits, stops;
                 char parity;
-                if(strncmp(buf, "RS485_1", 7) == 0)
+                if(strncmp(buf, "RS485_1", 7) == 0 && strlen(buf) == 7)
                     nr = 1;
-                else if(strncmp(buf, "RS485_2", 7) == 0)
+                else if(strncmp(buf, "RS485_2", 7) == 0 && strlen(buf) == 7)
                     nr = 2;
                 else
                     m_pReadFile->Error(3);
@@ -2223,7 +2278,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(nr)
                     m_pReadFile->Error(30+nr);
             }
-            else if(strncmp(buf, "MainboardV1.0", 13) == 0) 
+            else if(strncmp(buf, "MainboardV1.0", 13) == 0 && strlen(buf) == 13) 
             {
                 m_AusgAnz += PORTANZAHLCHANNEL;
                 if(m_AusgAnz > MAXAUSGCHANNEL)
@@ -2245,7 +2300,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(str.compare("EW") == 0)
                     m_EWAnzBoard += 1;
             }                
-            else if(strncmp(buf, "Merker", 6) == 0)
+            else if(strncmp(buf, "Merker", 6) == 0 && strlen(buf) == 6)
             {
                 pos = m_pReadFile->ReadNumber ();
                 if(pos > 0)
@@ -2254,7 +2309,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(10);
             }
-            else if (strncmp(buf, "Timer", 5) == 0)
+            else if (strncmp(buf, "Timer", 5) == 0 && strlen(buf) == 5)
             {
                 pos = m_pReadFile->ReadNumber ();
                 if(pos > 0)
@@ -2262,7 +2317,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(11);
             }
-            else if(strncmp(buf, "EingAusgV1.0", 12) ==0)
+            else if(strncmp(buf, "EingAusgV1.0", 12) == 0 && strlen(buf) == 12)
             {
                 m_EingAnz += PORTANZAHLCHANNEL;
                 m_AusgAnz += PORTANZAHLCHANNEL;
@@ -2275,7 +2330,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_EWAnzBoard += 1;
 
             }
-            else if(strncmp(buf, "EingAusgV2.0", 12) ==0)
+            else if(strncmp(buf, "EingAusgV2.0", 12) ==0 && strlen(buf) == 12)
             {
                 m_EingAnz += PORTANZAHLCHANNEL;
                 m_AusgAnz += PORTANZAHLCHANNEL;
@@ -2287,11 +2342,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     pos = m_pReadFile->ReadBuf (buf, ':');
                     if(pos < 0)
                         break;
-                    if(strncmp(buf, "EW", 2) == 0)
+                    if(strncmp(buf, "EW", 2) == 0 && strlen(buf) == 2)
                         m_EWAnzBoard += 1;
-                    else if(strncmp(buf, "EingExpV2.0", 11) == 0)
+                    else if(strncmp(buf, "EingExpV2.0", 11) == 0 && strlen(buf) == 11)
                         m_EingAnz += PORTANZAHLCHANNEL;
-                    else if(strncmp(buf, "AusgExpV2.0", 11) == 0)
+                    else if(strncmp(buf, "AusgExpV2.0", 11) == 0 && strlen(buf) == 11)
                     {
                         m_AusgAnz += PORTANZAHLCHANNEL;
                         if(m_AusgAnz > MAXAUSGCHANNEL)
@@ -2301,18 +2356,53 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                         m_pReadFile->Error(7);
                 }
             }
-            else if(strncmp(buf, "GSMV2.0", 7) == 0)
+            else if(strncmp(buf, "GSMV2.0", 7) == 0 && strlen(buf) == 7)
             {
                 m_UartAnz += 1;	
             }
-            else if (strncmp(buf, "S", 1) == 0)
+            else if(strncmp(buf, "SOMFYPIN", 8) == 0 && strlen(buf) == 8)
+            {
+                if(m_pSomfy == NULL)
+                {   m_pSomfy = new CSomfy((char *)this);
+                    m_pSomfy->SetPin(m_pReadFile->ReadText());
+                }
+                else
+                    m_pReadFile->Error(146);
+            }
+            else if(strncmp(buf, "SOMFYPORT", 9) == 0 && strlen(buf) == 9)
+            {
+                if(m_pSomfy == NULL)
+                    m_pReadFile->Error(147);
+                m_pSomfy->SetPort(m_pReadFile->ReadNumber());
+            }
+            else if(strncmp(buf, "SOMFYTOKEN", 10) == 0 && strlen(buf) == 10)
+            {
+                if(m_pSomfy == NULL)
+                    m_pReadFile->Error(147);
+                m_pSomfy->SetToken(m_pReadFile->ReadText());
+            }
+            else if(strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 & strlen(buf) == 13)
+            {
+                if(m_pSomfy == NULL)
+                    error = 150;
+                else
+                    error = m_pSomfy->IsDefined();
+                if(error)
+                    m_pReadFile->Error(error);
+
+                str = m_pReadFile->ReadText();
+                error = m_pSomfy->SetEntity(1, str);
+                if(error)
+                    m_pReadFile->Error(error);               
+            }
+            else if (strncmp(buf, "S", 1) == 0 && strlen(buf) == 1)
             {
                 pos = m_pReadFile->ReadNumber ();
                 if(pos > 0)
                         m_SEingAnz = pos;
                 else
                         m_pReadFile->Error(11);
-            }
+            }            
             else
                 m_pReadFile->Error(7);
         }
@@ -2413,13 +2503,14 @@ void CIOGroup::ReadConfig(char *pProgramPath)
     {	if(m_pReadFile->ReadLine())
         {
             m_pReadFile->ReadBuf(buf, ':');
-            if(strncmp(buf, "MainboardV1.0", 13) == 0 || strncmp(buf, "MainboardV2.0", 13) == 0) 
+            if((strncmp(buf, "MainboardV1.0", 13) == 0 && strlen(buf) == 13)
+                || (strncmp(buf, "MainboardV2.0", 13) == 0 && strlen(buf) == 13)) 
                 boardtype = 1;
-            else if(strncmp(buf, "EingAusgV1.0", 12) == 0)
+            else if(strncmp(buf, "EingAusgV1.0", 12) == 0 && strlen(buf) == 12)
                 boardtype = 20;
-            else if(strncmp(buf, "EingAusgV2.0", 12) == 0)
+            else if(strncmp(buf, "EingAusgV2.0", 12) == 0 && strlen(buf) == 12)
                 boardtype = 21;
-           else if(strncmp(buf, "GSMV2.0", 7) == 0)
+           else if(strncmp(buf, "GSMV2.0", 7) == 0 && strlen(buf) == 7)
                 boardtype = 30;
             else
                 boardtype = 0;
@@ -2476,18 +2567,18 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 pos = 1;
                 while(pos > 0) {
                     pos = m_pReadFile->ReadBuf (buf, ':');
-                    if(strncmp(buf, "EW", 2) == 0)
+                    if(strncmp(buf, "EW", 2) == 0 && strlen(buf) == 2)
                     {   // Inh1, INh2 und Addr2 sind bereits definiert
                         Addr3 = ADDRRTRM08;
                         Reg = 0;
                         init_EW(m_pEWBoardAddr, &AnzEW, Inh1, Addr2, Inh2, Addr3, Reg);
                     }
-                    else if(strncmp(buf, "EingExpV2.0", 11) == 0)
+                    else if(strncmp(buf, "EingExpV2.0", 11) == 0 && strlen(buf) == 11)
                     {
                         iAddr3 += 4;
                         initEingExp(&AnzEin, Inh1, Addr2, Inh2, iAddr3);
                     } 
-                    else if(strncmp(buf, "AusgExpV2.0", 11) == 0)
+                    else if(strncmp(buf, "AusgExpV2.0", 11) == 0 && strlen(buf) == 11)
                     {
                         iAddr3 += 4;
                         initAusgExp(&AnzAus, Inh1, Addr2, Inh2, iAddr3);
@@ -3061,6 +3152,7 @@ CIOGroup::CIOGroup()
     m_pHeizung = NULL;
     m_pWStation = NULL;
     m_pHue = NULL;
+    m_pSomfy = NULL;
     m_pAlarm = NULL;
     m_pMusic = NULL;
     m_pSonos = NULL;
@@ -3073,6 +3165,7 @@ CIOGroup::CIOGroup()
     m_iMaxAnzSensor = 0;
     m_iMaxAnzZaehler = 0;
     m_iMaxAnzHueEntity = 0;
+    m_iMaxAnzSomfyEntity = 0;  
     pthread_mutex_init(&ext_mutexNodejs, NULL);
 }
 
@@ -3130,6 +3223,11 @@ CIOGroup::~CIOGroup()
     {
         delete m_pSonos;
         m_pSonos = NULL;
+    }
+    if(m_pSomfy)
+    {
+        delete m_pSomfy;
+        m_pSomfy = NULL;
     }
     if(m_pBrowserMenu)
     {
@@ -3539,9 +3637,9 @@ void CIOGroup::LesHeizung(char *pProgramPath)
         if(iLen)
         {
             m_pReadFile->ReadBuf(buf, iLen);
-            if(strncmp(buf, "HEIZKOERPER", 11) == 0)
+            if(strncmp(buf, "HEIZKOERPER", 11) == 0 && strlen(buf) == 11)
                 iCase = 1;
-            else if(strncmp(buf, "HEIZPROGRAMM", 12) == 0)
+            else if(strncmp(buf, "HEIZPROGRAMM", 12) == 0 && strlen(buf) == 12)
             {
                 if(iCase == 21)
                 {
@@ -3552,7 +3650,7 @@ void CIOGroup::LesHeizung(char *pProgramPath)
                 }
                 iCase = 20;
             }
-            else if(strncmp(buf, "WARMWASSER", 10) == 0)
+            else if(strncmp(buf, "WARMWASSER", 10) == 0 && strlen(buf) == 10)
                 iCase = 2; 
             else
             {
@@ -3824,7 +3922,7 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                                 if(len)
                                     pMenu->SetImage(buf);
                                 len = m_pReadFile->ReadBuf(buf, ',');
-                                if(len == 1 && strncmp(buf, "1", 1) == 0)
+                                if(len == 1 && strncmp(buf, "1", 1) == 0 && strlen(buf) == 1)
                                     pMenu->m_bSammelSchalter = true;
                             }
                             break;
@@ -3886,11 +3984,12 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             }
                         }
                         break;
-                    case 2: // es handelt sich um eine HUE-Lampe
-                        if(strncmp(buf, "H", 1) == 0) // Ausgang
+                    case 10: // es handelt sich um eine HUE-Lampe nur Ein/Aus
+                    case 11: // Hue mit Schalter und Slider für Helligkeit
+                        if(strncmp(buf, "HUE", 3) == 0) // Ausgang
                         {
-                            nbr = atoi(&buf[1]);
-                            if(m_pHue != NULL && nbr > 0 && nbr <= m_pHue->GetAnz())
+                            nbr = atoi(&buf[3]);
+                            if(m_pHue != NULL && nbr > 0 && nbr <= m_pHue->GetAnzEntity())
                             { 
                                 CBerechneHue * pHue = new CBerechneHue;
                                 pHue->init(m_pHue->GetAddress(nbr));
@@ -3903,13 +4002,46 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             if(len)
                             {
                                 nbr = atoi(&buf[1]);
-                                if(strncmp(buf, "S", 1) == 0)
+                                if(strncmp(buf, "I", 1) == 0)
                                 {
-                                    if(nbr > 0 && nbr <= GetSEingAnz())
+                                    if(nbr > 0 && nbr <= GetIntegerAnz())
                                     {
-                                        CBerechneAusg * pAusg = new CBerechneAusg; 
-                                        pAusg->init(nbr, GetSEingAddress(nbr));
-                                        pMenu->m_pOperChange = pAusg;
+                                        CBerechneInteger * pBerechneInteger = new CBerechneInteger;
+                                        pBerechneInteger->init(GetIntegerAddress (nbr));
+                                        pMenu->m_pOperChange = pBerechneInteger;
+                                    }
+                                }
+                                else
+                                    m_pReadFile->Error(56);
+                            }                            
+                        } 
+                        else
+                            m_pReadFile->Error(53);
+                        break;
+                    case 20: // es handelt sich um ein Somfy-Element nur Ein/Aus
+                    case 21: // Somfy mit Slider für Helligkeit
+                        if(strncmp(buf, "SOMFY", 5) == 0) // Ausgang
+                        {
+                            nbr = atoi(&buf[5]);
+                            if(m_pSomfy != NULL && nbr > 0 && nbr <= m_pSomfy->GetAnzEntity())
+                            { 
+                                CBerechneSomfy * pSomfy = new CBerechneSomfy;
+                                pSomfy->init(nbr, m_pSomfy);
+                                pMenu->m_pOperState = pSomfy;
+                            }
+                            else
+                                m_pReadFile->Error(54);
+                            len = m_pReadFile->ReadBuf(buf, ','); 
+                            if(len)
+                            {
+                                nbr = atoi(&buf[1]);
+                                if(strncmp(buf, "I", 1) == 0)
+                                {
+                                    if(nbr > 0 && nbr <= GetIntegerAnz())
+                                    {
+                                        CBerechneInteger * pBerechneInteger = new CBerechneInteger; 
+                                        pBerechneInteger->init(GetIntegerAddress(nbr));
+                                        pMenu->m_pOperChange = pBerechneInteger;
                                     }
                                     else
                                         m_pReadFile->Error(57);
@@ -3920,7 +4052,7 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                         } 
                         else
                             m_pReadFile->Error(53);
-                        break;
+                        break;                        
                     default:
                         m_pReadFile->Error(56);
                         break;
@@ -4099,16 +4231,20 @@ void CIOGroup::LesAlarm(char *pProgramPath)
 
 void CIOGroup::LesHistory(char * pProgrammPath)
 {
-    int iLen, iTyp, iNr;
+    int iLen, iTyp, iNr, iAnzHue, iAnzSomfy;
     char buf[256], ch;
     bool bRet, bLast = false;
     long lFilePos = 0l;
     
     if(m_pHue == NULL)
-        iNr = 0;
+        iAnzHue = 0;
     else
-        iNr = m_pHue->GetAnz();
-    m_pHistory = new CHistory(m_AusgAnz, m_EWAnzBoard * EWANZAHLCHANNEL, iNr);
+        iAnzHue = m_pHue->GetAnzEntity();
+    if(m_pSomfy == NULL)
+        iAnzSomfy = 0;
+    else
+        iAnzSomfy = m_pSomfy->GetAnzEntity();
+    m_pHistory = new CHistory(m_AusgAnz, m_EWAnzBoard * EWANZAHLCHANNEL, iAnzHue, iAnzSomfy);
     
     m_pReadFile = new CReadFile;
     m_pReadFile->OpenRead (pProgramPath, 10);  
@@ -4126,16 +4262,22 @@ void CIOGroup::LesHistory(char * pProgrammPath)
                     iTyp = 1;
                 else if (strncmp(buf, "FA", 2) == 0 && strlen(buf) == 2)
                     iTyp = 2;
-                else if (strncmp(buf, "H", 1) == 0 && strlen(buf) == 1)
+                else if (strncmp(buf, "HUE", 3) == 0 && strlen(buf) == 3)
                 {
                     iTyp = 3;
                     if(m_pHue == NULL)
                         m_pReadFile->Error(114);
                 }
-                else if(strncmp(buf, "DIFF", 4) == 0)
+                else if(strncmp(buf, "SOMFY", 5) == 0 && strlen(buf) == 5)
+                {
+                    iTyp = 4;
+                    if(m_pSomfy == NULL)
+                        m_pReadFile->Error(150);
+                }
+                else if(strncmp(buf, "DIFF", 4) == 0 && strlen(buf) == 4)
                 {
                     m_pHistory->SetFilePosAfterDiff(lFilePos);
-                    iTyp = 4;
+                    iTyp = 10;
                 }
                 else
                     m_pReadFile->Error(113);
@@ -4143,19 +4285,22 @@ void CIOGroup::LesHistory(char * pProgrammPath)
                 for(;;)
                 {
                     iNr = m_pReadFile->ReadNumber();
-                    if(!iNr && iTyp != 4)
+                    if(!iNr && iTyp != 10)
                         break;
                     switch(iTyp) {
-                        case 1:
+                        case 1: // Ausgang
                             bRet = m_pHistory->InitAddAusg(iNr);
                             break;
-                        case 2:
+                        case 2: // EasyWave Ausgang
                             bRet = m_pHistory->InitAddEWAusg(iNr);
                             break;
-                        case 3:
+                        case 3: // HUE Ausgang
                             bRet = m_pHistory->InitAddHue(iNr);
                             break;
-                        case 4:
+                        case 4: // Somfy Ausgang
+                            bRet = m_pHistory->InitAddSomfy(iNr);
+                            break;
+                        case 10:
                             bRet = m_pHistory->SetDiffTage(iNr);
                             bLast = true;
                             break;
