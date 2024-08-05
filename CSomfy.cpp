@@ -144,12 +144,12 @@ void CSomfy::Control()
                 bSend = false;
             else
                 ((CIOGroup *)m_pIOGroup)->m_pHistory->Add(&SomfyProperty);            
-        }        
+        } 
+        strBuffer = m_strSomfyConnect + "/exec/apply";
+        strJson = "{\"actions\":[{\"commands\":[{\"name\":";      
         switch(iTyp)
         {
             case 1: // LED Licht
-                strBuffer = m_strSomfyConnect + "/exec/apply";
-                strJson = "{\"actions\":[{\"commands\":[{\"name\":";
                 if(iAktion)
                 {  
                     strJson += "\"on\"}";
@@ -158,12 +158,18 @@ void CSomfy::Control()
                 }
                 else
                     strJson += "\"off\"}";
-                strJson += "],\"deviceURL\":\"" + pSomfyEntity->GetstrUrl() + "\"}]}";
                 break;
+            case 2: // Markise
+                if(iAktion) 
+                    strJson += "\"down\"}";
+                else
+                    strJson += "\"up\"}";
+                break;           
             default:
                 syslog(LOG_ERR, "Somfy: undefined typ");
                 return;   
         }
+        strJson += "],\"deviceURL\":\"" + pSomfyEntity->GetstrUrl() + "\"}]}";
         // URL
         curl_easy_setopt(m_pCurl, CURLOPT_URL, strBuffer.c_str()); 
 

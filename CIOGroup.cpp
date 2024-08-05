@@ -1743,27 +1743,28 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
                 m_iMaxAnzZaehler++;
             }
             else if((strncmp(buf, "S0ZAEHLER", 9) == 0 && strlen(buf) == 9)
-                    | (strncmp(buf, "SUMZAEHLER", 10) == 0 && strlen(buf) == 10)
-                    | (strncmp(buf, "DIFFZAEHLER", 11) == 0 && strlen(buf) == 11)
-                    | (strncmp(buf, "ZTZAEHLER", 9) == 0 && strlen(buf) == 9))
+                    || (strncmp(buf, "SUMZAEHLER", 10) == 0 && strlen(buf) == 10)
+                    || (strncmp(buf, "DIFFZAEHLER", 11) == 0 && strlen(buf) == 11)
+                    || (strncmp(buf, "ZTZAEHLER", 9) == 0 && strlen(buf) == 9))
                 m_iMaxAnzZaehler++;
             else if((strncmp(buf, "TQS3", 4) == 0 && strlen(buf) == 4)
-                    | (strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
-                    | (strncmp(buf, "TQS3SQEARCH", 11) == 0 && strlen(buf) == 11))
+                    || (strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
+                    || (strncmp(buf, "TQS3SQEARCH", 11) == 0 && strlen(buf) == 11))
             {   m_iMaxAnzModBusClient++;
                 m_iMaxAnzSensor++;
             }
             else if((strncmp(buf, "TH1", 3) == 0 && strlen(buf) == 3)
-                    | (strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
-                    | (strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9))
+                    || (strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
+                    ||(strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9))
             {
                 m_iMaxAnzModBusClient++;
                 m_iMaxAnzSensor++;
             }
             else if((strncmp(buf, "HUELIGHT", 8) == 0 && strlen(buf) == 8)
-                    | (strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8))
+                    || (strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8))
                 m_iMaxAnzHueEntity++;
-            else if(strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13)
+            else if(strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13
+                    || (strncmp(buf, "SOMFYMARKISE", 12) == 0 && strlen(buf) == 12))
                 m_iMaxAnzSomfyEntity++;
         }
         else
@@ -2392,6 +2393,20 @@ void CIOGroup::ReadConfig(char *pProgramPath)
 
                 str = m_pReadFile->ReadText();
                 error = m_pSomfy->SetEntity(1, str);
+                if(error)
+                    m_pReadFile->Error(error);               
+            }
+            else if(strncmp(buf, "SOMFYMARKISE", 12) == 0 & strlen(buf) == 12)
+            {
+                if(m_pSomfy == NULL)
+                    error = 150;
+                else
+                    error = m_pSomfy->IsDefined();
+                if(error)
+                    m_pReadFile->Error(error);
+
+                str = m_pReadFile->ReadText();
+                error = m_pSomfy->SetEntity(2, str);
                 if(error)
                     m_pReadFile->Error(error);               
             }
