@@ -178,7 +178,6 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
             }             
             if(SearchString((char *)m_chEmpf, (char *)"OK", m_iEmpf) || m_chEmpf[0] == '>')
             {
-                syslog(LOG_INFO, (char *)m_chEmpf);
                 switch(m_iSubState) {
                 case GSMSENDAT:
                     // Get Factory settings
@@ -495,10 +494,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 		break;
 	}	
 	if(iSend)
-    {
-        syslog(LOG_INFO, (char *)m_chSend);
         Send(iSend);
-    }
     
     return bRet;
 }
@@ -513,7 +509,6 @@ bool CGsm::GetSMS()
     {    
         iLen = sprintf((char *)m_chSend, "AT+CMGD=1,4"); // alle SMS löschen
         iEmpf = m_iEmpf;
-        syslog(LOG_INFO, (char *)m_chSend);
         Send(iLen);
         iPos = 0;
         m_iSubState = GSMDELETEALLSMS;

@@ -423,7 +423,7 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                             {   
                             pTitel = pTitel->m_pNextMenu;
                             pthread_mutex_lock(&ext_mutexNodejs);
-                            if((int)pTitel->m_pOperState->GetState())
+                            if((int)(pTitel->m_pOperState->GetState() % 256))
                                 bStatus = true;
                             pthread_mutex_unlock(&ext_mutexNodejs);
                             }
