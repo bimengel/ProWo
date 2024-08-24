@@ -40,6 +40,7 @@ public:
     int getIfElse() {return m_IfElse; };
     virtual int GetState(){ return 0;};
     virtual void SetState(int state){}; 
+    virtual int GetMax() { return 99;};
     string GetString();
 	
 protected:

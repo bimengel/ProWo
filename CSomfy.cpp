@@ -1,5 +1,14 @@
 #include "ProWo.h"
 
+//
+//  JEN 17.08.24
+//  core:RSSILevelState : Signalstärke
+//  
+//  PositionableScreen (Positionierbarer Bildschirm? - Andy Qbus vorne)
+//      commands: close, down, up, stop, open, setPosition(nparams)
+//  PositionableTiltedRollerShutter (Positionierbarer, geneigte Rolllade - Velux)
+//      commands: close, down, up, stop, open, setPosition(nparams)
+//  PositionableHorizontalAwning (positionierbare, horizontale Markise)
 size_t read_Somfydata(void *ptr, size_t size, size_t nmemb, void *userdata)
 {
 
@@ -66,7 +75,7 @@ void CSomfy::SetState(int iNr, int iVal)
     GetAddress(iNr)->SetState(iVal);
     SomfyProperty.m_iNr = iNr;
     SomfyProperty.m_iState = iVal % 256;
-    SomfyProperty.m_iBrightness = iVal / 256;
+    SomfyProperty.m_iVal = iVal / 256;
     SomfyProperty.m_iSource = 1;
     SomfyProperty.m_iTyp = GetAddress(iNr)->GetTyp();
     pthread_mutex_lock(&m_mutexSomfyFifo);  
@@ -79,7 +88,7 @@ int CSomfy::GetAnzEntity()
     return m_iAnzahlEntity;
 }
 
-int CSomfy::SetEntity(int typ, string strUrl)
+int CSomfy::SetEntity(int typ, int iMax, string strUrl)
 {
     int error = 0;
     CSomfyEntity * pSomfyEntity;
@@ -87,7 +96,7 @@ int CSomfy::SetEntity(int typ, string strUrl)
     if(m_iAnzahlEntity < ((CIOGroup *)m_pIOGroup)->m_iMaxAnzSomfyEntity) 
     {
         pSomfyEntity = new CSomfyEntity;
-        pSomfyEntity->init(m_iAnzahlEntity+1, typ, (char*)(this), strUrl);
+        pSomfyEntity->init(m_iAnzahlEntity+1, typ, iMax, (char*)(this), strUrl);
         m_pSomfyEntity[m_iAnzahlEntity] = pSomfyEntity;
         m_iAnzahlEntity++;
     }
@@ -124,7 +133,7 @@ void CSomfy::Control()
     struct curl_slist* slist = NULL;
     bool bSuccess;
     CJson *pJson = new CJson;
-    int iRet, iErr, iTyp, iAktion, iBrightness;
+    int iRet, iErr;
     CSomfyEntity *pSomfyEntity;
 
     pthread_mutex_lock(&m_mutexSomfyFifo);  
@@ -133,9 +142,6 @@ void CSomfy::Control()
         SomfyProperty = m_SomfyFifo.front();
         m_SomfyFifo.pop();        
         pthread_mutex_unlock(&m_mutexSomfyFifo);  
-        iTyp = SomfyProperty.m_iTyp;
-        iAktion = SomfyProperty.m_iState;
-        iBrightness = SomfyProperty.m_iBrightness;
         pSomfyEntity = GetAddress(SomfyProperty.m_iNr);
         if(((CIOGroup *)m_pIOGroup)->m_pHistory != NULL)
         {
@@ -147,20 +153,20 @@ void CSomfy::Control()
         } 
         strBuffer = m_strSomfyConnect + "/exec/apply";
         strJson = "{\"actions\":[{\"commands\":[{\"name\":";      
-        switch(iTyp)
+        switch(SomfyProperty.m_iTyp)
         {
             case 1: // LED Licht
-                if(iAktion)
+                if(SomfyProperty.m_iState)
                 {  
                     strJson += "\"on\"}";
-                    if(iBrightness)
-                        strJson += ",{\"name\":\"setIntensity\",\"parameters\":[" + to_string(iBrightness) + "]}";
+                    if(SomfyProperty.m_iVal)
+                        strJson += ",{\"name\":\"setIntensity\",\"parameters\":[" + to_string(SomfyProperty.m_iVal) + "]}";
                 }
                 else
                     strJson += "\"off\"}";
                 break;
             case 2: // Markise
-                if(iAktion) 
+                if(SomfyProperty.m_iState) 
                     strJson += "\"down\"}";
                 else
                     strJson += "\"up\"}";
@@ -220,7 +226,7 @@ CSomfyProperty::CSomfyProperty()
     m_iNr = 0;
     m_iTyp = 0;
     m_iSource = 0;
-    m_iBrightness = 100;
+    m_iVal = 0;
 }
 
 CSomfyEntity::CSomfyEntity()
@@ -229,7 +235,8 @@ CSomfyEntity::CSomfyEntity()
     m_iTyp = 0;
     m_iID = 0;
     m_iState = 0;
-    m_iBrightness = 0;
+    m_iVal = 0;
+    m_iMax = 100;
     m_pSomfy = NULL;
 }
 
@@ -245,34 +252,29 @@ CSomfyEntity * CSomfy::GetAddress(int nr)
     return m_pSomfyEntity[nr-1];
 }
 
-void CSomfyEntity::init(int iNr, int typ, char *pSomfy, string strUrl)
+void CSomfyEntity::init(int iNr, int typ, int iMax, char *pSomfy, string strUrl)
 {
     int pos;
     m_iNr = iNr;
     m_iTyp = typ;
     m_iState = 0;
     m_pSomfy = pSomfy;
-    m_iBrightness = 100;
-/*  m_strUrl = "";
-    for(pos = 0; pos < strUrl.length(); pos++)    
-    {
-        if(strUrl.at(pos) == ':')
-            m_strUrl += "%3A";
-        else if(strUrl.at(pos) == '/')
-            m_strUrl += "%2F";
-        else
-            m_strUrl += strUrl.at(pos);
-    }*/
-   m_strUrl = strUrl;
+    m_iMax = iMax;
+    m_iVal = iMax;
+    m_strUrl = strUrl;
+}
+int CSomfyEntity::GetMax()
+{
+    return m_iMax;
 }
 int CSomfyEntity::GetState()
 {
-    return m_iBrightness * 256 + m_iState;
+    return m_iVal * 256 + m_iState;
 }
 void CSomfyEntity::SetState(int iVal)
 {
     m_iState = iVal % 256;
-    m_iBrightness = iVal / 256;  
+    m_iVal = iVal / 256;  
 }    
 
 int CSomfyEntity::GetTyp()
@@ -307,3 +309,17 @@ int CBerechneSomfy::GetState()
 {
     return m_pSomfy->GetAddress(m_nr)->GetState();
 }
+int CBerechneSomfy::GetMax()
+{
+    return m_pSomfy->GetAddress(m_nr)->GetMax();
+}
+/*  m_strUrl = "";
+    for(pos = 0; pos < strUrl.length(); pos++)    
+    {
+        if(strUrl.at(pos) == ':')
+            m_strUrl += "%3A";
+        else if(strUrl.at(pos) == '/')
+            m_strUrl += "%2F";
+        else
+            m_strUrl += strUrl.at(pos);
+    }*/

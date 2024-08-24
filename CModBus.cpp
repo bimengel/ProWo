@@ -38,7 +38,7 @@ ProWo is free software: you can redistribute it and/or modify it
  * 
  */
   
-void CModBus::Control()
+void CModBusRTU::Control()
 {
     int ret, len, i;
     unsigned char *ptr;
@@ -50,22 +50,22 @@ void CModBus::Control()
     case IDLE:
         for(i = 0; i < m_iAnzModBusClient; i++)
         {
-            ret = m_pModBusClient[i]->GetStatus();
+            ret = m_pModBusRTUClient[i]->GetStatus();
             if(ret == 1) // warten auf Senden
             {   
                 delayMicroseconds(m_iWaitBetweenProtocol);  // 50 msek warten, Modbus-Pause
                 m_iaktAktiv = i;
-                ptr = m_pModBusClient[m_iaktAktiv]->GetSendPtr();
-                len = m_pModBusClient[m_iaktAktiv]->GetSendLen();
+                ptr = m_pModBusRTUClient[m_iaktAktiv]->GetSendPtr();
+                len = m_pModBusRTUClient[m_iaktAktiv]->GetSendLen();
                 ret = CalcCRC(ptr, len);
                 *(ptr + len) = ret %256;
                 *(ptr + len +1) = ret /256;
-                m_pRS485->SendLen(m_pModBusClient[m_iaktAktiv]->GetSendPtr(), 
-                                  m_pModBusClient[m_iaktAktiv]->GetEmpfPtr(), 
-                                  m_pModBusClient[m_iaktAktiv]->GetSendLen(),
-                                  m_pModBusClient[m_iaktAktiv]->GetEmpfLen());
-                m_pModBusClient[m_iaktAktiv]->SetError(NOERROR);
-                m_pModBusClient[m_iaktAktiv]->SetStatus(2); // wird gesendet
+                m_pRS485->SendLen(m_pModBusRTUClient[m_iaktAktiv]->GetSendPtr(), 
+                                  m_pModBusRTUClient[m_iaktAktiv]->GetEmpfPtr(), 
+                                  m_pModBusRTUClient[m_iaktAktiv]->GetSendLen(),
+                                  m_pModBusRTUClient[m_iaktAktiv]->GetEmpfLen());
+                m_pModBusRTUClient[m_iaktAktiv]->SetError(NOERROR);
+                m_pModBusRTUClient[m_iaktAktiv]->SetStatus(2); // wird gesendet
                 m_iWait = 0;
                 break;
             }
@@ -76,8 +76,8 @@ void CModBus::Control()
         if(m_iaktAktiv >= 0 && m_iaktAktiv < m_iAnzModBusClient)
         {
             // Daten sind gesendet worden und entweder es erfolgte ein Empfang
-            // oder m_pModBusClient m_iError wurde auf ERRTIMEOUT
-            ret = m_pModBusClient[m_iaktAktiv]->GetError();
+            // oder m_pModBusRTUClient m_iError wurde auf ERRTIMEOUT
+            ret = m_pModBusRTUClient[m_iaktAktiv]->GetError();
             if(ret == NOERROR)
             {
                 ret = m_pRS485->GetError ();
@@ -85,28 +85,28 @@ void CModBus::Control()
                 // müssen aber noch in den aktuellen Client übernommen werden.
                 if(!ret)
                 {   
-                    ptr = m_pModBusClient[m_iaktAktiv]->GetEmpfPtr();
-                    len = m_pModBusClient[m_iaktAktiv]->GetEmpfLen();
+                    ptr = m_pModBusRTUClient[m_iaktAktiv]->GetEmpfPtr();
+                    len = m_pModBusRTUClient[m_iaktAktiv]->GetEmpfLen();
                     len += 5; // Kopf + CRC
                     i = CalcCRC (ptr, len);
                     if(i)
                     {
-                        m_pModBusClient[m_iaktAktiv]->SetError(ERRCRC);
+                        m_pModBusRTUClient[m_iaktAktiv]->SetError(ERRCRC);
                         syslog(LOG_ERR, "ModBus: CRC Error");
                     }
 
                     // gibt es einen ModBus-Fehler ?
                     if (*(ptr +1) & 0x80)
                     {
-                        m_pModBusClient[m_iaktAktiv]->SetError(*(ptr + 2));
+                        m_pModBusRTUClient[m_iaktAktiv]->SetError(*(ptr + 2));
                         syslog(LOG_ERR, "ModBus RTU Error 0x%x", *(ptr + 2));
 
                     }
                 }
                 else
-                    m_pModBusClient[m_iaktAktiv]->SetError(ret);		
+                    m_pModBusRTUClient[m_iaktAktiv]->SetError(ret);		
             }
-            m_pModBusClient[m_iaktAktiv]->SetStatus (3);
+            m_pModBusRTUClient[m_iaktAktiv]->SetStatus (3);
             m_pRS485->SetState(IDLE);
         }
         else
@@ -119,23 +119,39 @@ void CModBus::Control()
             m_pRS485->Reset(); // Zustand zurücksetzen
             m_iWait = 0;
             if(m_iaktAktiv >= 0 && m_iaktAktiv < m_iAnzModBusClient)
-                m_pModBusClient[m_iaktAktiv]->SetError(ERRTIMEOUT);
+                m_pModBusRTUClient[m_iaktAktiv]->SetError(ERRTIMEOUT);
         }
         break;
     }
 
 }
 
-CModBus::CModBus(int iAnz)
+//
+// CModBus
+//
+CModBus::CModBus()
+{
+    m_iMaxAnzModBusClient = 0;
+    m_iAnzModBusClient = 0;
+}
+
+int CModBus::GetAnzClient()
+{
+    return m_iAnzModBusClient;
+}
+
+//
+// CModBusRTU
+//
+CModBusRTU::CModBusRTU(int iAnz)
 {
     int i;
 
     m_pRS485 = NULL;
-    m_pModBusClient = new CModBusClient *[iAnz];
+    m_pModBusRTUClient = new CModBusRTUClient *[iAnz];
 
     for(i=0; i < iAnz; i++)
-        m_pModBusClient[i] = NULL;
-    m_iAnzModBusClient = 0;
+        m_pModBusRTUClient[i] = NULL;
     m_iaktAktiv = -1;
     m_iWaitBetweenProtocol = 0;
     m_iMaxAnzModBusClient = iAnz;
@@ -143,33 +159,29 @@ CModBus::CModBus(int iAnz)
 	
 }
 
-CModBus::~CModBus()
+CModBusRTU::~CModBusRTU()
 {
     int i;
 
-    if(m_pModBusClient)
+    if(m_pModBusRTUClient)
     {
         for(i=0; i < m_iMaxAnzModBusClient; i++)
-            delete m_pModBusClient[i];
-        delete [] m_pModBusClient;
-        m_pModBusClient = NULL;
+            delete m_pModBusRTUClient[i];
+        delete [] m_pModBusRTUClient;
+        m_pModBusRTUClient = NULL;
     }
     pthread_mutex_destroy(&m_mutexModBus);
 	
 }
-int CModBus::GetAnzClient()
-{
-    return m_iAnzModBusClient;
-}
 
-CModBusClient * CModBus::AppendModBus(int Address, int iWaitBetweenProtocol)
+CModBusRTUClient * CModBusRTU::AppendModBus(int Address, int iWaitBetweenProtocol)
 {
-    CModBusClient *pRet;
+    CModBusRTUClient *pRet;
 
     if(m_iAnzModBusClient < m_iMaxAnzModBusClient )
     {
-        m_pModBusClient[m_iAnzModBusClient] = new CModBusClient;
-        pRet = m_pModBusClient[m_iAnzModBusClient];
+        m_pModBusRTUClient[m_iAnzModBusClient] = new CModBusRTUClient;
+        pRet = m_pModBusRTUClient[m_iAnzModBusClient];
         m_iAnzModBusClient++;
         m_iWaitBetweenProtocol = iWaitBetweenProtocol;
         pRet->SetAddress(Address, &m_mutexModBus);
@@ -180,12 +192,12 @@ CModBusClient * CModBus::AppendModBus(int Address, int iWaitBetweenProtocol)
     return pRet;
 }
 
-void CModBus::SetCRS485(CRS485 * pRS485)
+void CModBusRTU::SetCRS485(CRS485 * pRS485)
 {
     m_pRS485 = pRS485;
 }
 
-unsigned int CModBus::CalcCRC(unsigned char* ptr, int length)
+unsigned int CModBusRTU::CalcCRC(unsigned char* ptr, int length)
 {
     int carry;
     int i, j;
@@ -208,51 +220,51 @@ unsigned int CModBus::CalcCRC(unsigned char* ptr, int length)
 }
 
 //
-//  cModBusClient
+//  CModBusRTUClient
 //
-void CModBusClient::SetStatus(int state)
+void CModBusRTUClient::SetStatus(int state)
 {
-    pthread_mutex_lock(m_pmutexModBus);
+    pthread_mutex_lock(m_pmutexModBusRTU);
     m_iStatus = state;
-    pthread_mutex_unlock(m_pmutexModBus);
+    pthread_mutex_unlock(m_pmutexModBusRTU);
 }
 
-int CModBusClient::GetStatus()
+int CModBusRTUClient::GetStatus()
 {   int i;
 	
-    pthread_mutex_lock(m_pmutexModBus);
+    pthread_mutex_lock(m_pmutexModBusRTU);
     i = m_iStatus;
-    pthread_mutex_unlock(m_pmutexModBus);
+    pthread_mutex_unlock(m_pmutexModBusRTU);
     return i;
 }
 
-void CModBusClient::SetError(int err)
+void CModBusRTUClient::SetError(int err)
 {
     m_iError = err;
 }
 
-int CModBusClient::GetError()
+int CModBusRTUClient::GetError()
 {	
     return m_iError;
 }
 
-void CModBusClient::StartSend()
+void CModBusRTUClient::StartSend()
 {
     SetStatus(1);
 }
 
-unsigned char *CModBusClient::GetSendPtr()
+unsigned char *CModBusRTUClient::GetSendPtr()
 {
     return m_chSend;
 }
 
-unsigned char *CModBusClient::GetEmpfPtr()
+unsigned char *CModBusRTUClient::GetEmpfPtr()
 {
     return m_chEmpf;
 }
 
 
-int CModBusClient::SetAddress(int address, pthread_mutex_t *pmutex)
+int CModBusRTUClient::SetAddress(int address, pthread_mutex_t *pmutex)
 {
     int ret;
 
@@ -261,7 +273,7 @@ int CModBusClient::SetAddress(int address, pthread_mutex_t *pmutex)
         m_iAddress = address;
         ret = address;
         m_chSend[0] =  (char)address;
-        m_pmutexModBus = pmutex;
+        m_pmutexModBusRTU = pmutex;
     }
     else
         ret = -1;
@@ -269,18 +281,18 @@ int CModBusClient::SetAddress(int address, pthread_mutex_t *pmutex)
     return ret;
 };
 
-void CModBusClient::SetAddress(int address)
+void CModBusRTUClient::SetAddress(int address)
 {
     m_iAddress = address;
     m_chSend[0] = (char)m_iAddress;
 }
 
-int CModBusClient::GetAddress()
+int CModBusRTUClient::GetAddress()
 {
 	return m_iAddress;
 }
 
-CModBusClient::CModBusClient()
+CModBusRTUClient::CModBusRTUClient()
 {
     m_iAddress = 0;
     m_iNewAddress = 0;
@@ -288,36 +300,36 @@ CModBusClient::CModBusClient()
     m_iSendLen = 0;
     m_iEmpfLen = 0;
     m_iError = 0;
-    m_pmutexModBus = NULL;
+    m_pmutexModBusRTU = NULL;
 
 };
 
-void CModBusClient::SetSendLen(int len)
+void CModBusRTUClient::SetSendLen(int len)
 {
     m_iSendLen = len;
 }
 
-int CModBusClient::GetSendLen()
+int CModBusRTUClient::GetSendLen()
 {
     return m_iSendLen;
 }
 
-void CModBusClient::SetEmpfLen(int len)
+void CModBusRTUClient::SetEmpfLen(int len)
 {
     m_iEmpfLen = len;
 }
 
-int CModBusClient::GetEmpfLen()
+int CModBusRTUClient::GetEmpfLen()
 {
     return m_iEmpfLen;
 }
 
-void CModBusClient::SetNewAddress(int newAddress)
+void CModBusRTUClient::SetNewAddress(int newAddress)
 {
     m_iNewAddress = newAddress;
 }
 
-int CModBusClient::GetNewAddress()
+int CModBusRTUClient::GetNewAddress()
 {
     return m_iNewAddress;
 }

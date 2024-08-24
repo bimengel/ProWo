@@ -92,13 +92,13 @@ string CSensor::GetName()
 CSensorModBus :: CSensorModBus(int nr) : CSensor (nr)
 {
     m_iNummer = nr;
-    m_pModBusClient = NULL;
+    m_pModBusRTUClient = NULL;
     m_iFunction = 0;
 }
 
-void CSensorModBus :: SetModBusClient(CModBusClient *pClient)
+void CSensorModBus :: SetModBusClient(CModBusRTUClient *pClient)
 {
-    m_pModBusClient = pClient;
+    m_pModBusRTUClient = pClient;
 }
 
 //
@@ -118,11 +118,11 @@ int CTQS3 :: LesenStarten()
     int ret = 0;
     char ptrLog[100];
 
-    status = m_pModBusClient->GetStatus();  
+    status = m_pModBusRTUClient->GetStatus();  
     if(status == 3) // Empfang ist erfolgt
     {   
-        status = m_pModBusClient->GetError ();
-        ptr = m_pModBusClient->GetEmpfPtr();
+        status = m_pModBusRTUClient->GetError ();
+        ptr = m_pModBusRTUClient->GetEmpfPtr();
         if(!status)
         {
             switch(m_iFunction) {
@@ -142,11 +142,11 @@ int CTQS3 :: LesenStarten()
                 break;
 
             case 2: // Identification
-                ret = m_pModBusClient->GetEmpfLen();
+                ret = m_pModBusRTUClient->GetEmpfLen();
                 *(ptr+ret+3) = 0;
-                sprintf(ptrLog, "Adresse = %d, ID = %s", m_pModBusClient->GetAddress(), ptr+5);
+                sprintf(ptrLog, "Adresse = %d, ID = %s", m_pModBusRTUClient->GetAddress(), ptr+5);
                 syslog(LOG_ERR, ptrLog);
-                ret = m_pModBusClient->GetAddress();
+                ret = m_pModBusRTUClient->GetAddress();
                 SetFunction(1);
                 break;
 
@@ -158,20 +158,20 @@ int CTQS3 :: LesenStarten()
             case 4: // Adresse ändern
                 sprintf(ptrLog, "TQS3 address changed");
                 syslog(LOG_ERR, ptrLog);
-                m_pModBusClient->SetAddress(m_pModBusClient->GetNewAddress());
+                m_pModBusRTUClient->SetAddress(m_pModBusRTUClient->GetNewAddress());
                 SetFunction(5);
                 break;
             case 5: // Adresse ändern
                 sprintf(ptrLog, "TQS3 address changed");
                 syslog(LOG_ERR, ptrLog);
-                ret = m_pModBusClient->GetNewAddress();
+                ret = m_pModBusRTUClient->GetNewAddress();
                 SetFunction(1);
                 break;
             }
         }
         else
         {	
-            int adr = m_pModBusClient->GetAddress();
+            int adr = m_pModBusRTUClient->GetAddress();
             if(m_iFunction == 2)
             {
                 if(adr > 255)
@@ -181,7 +181,7 @@ int CTQS3 :: LesenStarten()
                 }    
                 else
                     adr++;
-                m_pModBusClient->SetAddress(adr);		
+                m_pModBusRTUClient->SetAddress(adr);		
             }
             else
             {
@@ -191,10 +191,10 @@ int CTQS3 :: LesenStarten()
             }
         }
         // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
-        m_pModBusClient->StartSend();
+        m_pModBusRTUClient->StartSend();
     }
     if(status == 0)
-        m_pModBusClient->StartSend();
+        m_pModBusRTUClient->StartSend();
     return(ret);
 }
 
@@ -208,7 +208,7 @@ CTQS3::~CTQS3() {
 
 void CTQS3 :: SetFunction(int func)
 {
-    unsigned char *pCh = m_pModBusClient->GetSendPtr ();
+    unsigned char *pCh = m_pModBusRTUClient->GetSendPtr ();
     m_iFunction = func;
 
     switch(func) {
@@ -219,8 +219,8 @@ void CTQS3 :: SetFunction(int func)
         pCh[3] = 0x00;
         pCh[4] = 0x00; // register count
         pCh[5] = 0x02;
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(4);
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(4);
         break;
     case 3: 
         // Permission for configuration changes
@@ -229,8 +229,8 @@ void CTQS3 :: SetFunction(int func)
         pCh[3] = 0x00; 
         pCh[4] = 0x00;
         pCh[5] = 0xFF;
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(3);
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(3);
         break;
     case 4:
         // Adresse ändern
@@ -238,9 +238,9 @@ void CTQS3 :: SetFunction(int func)
         pCh[2] = 0x00;
         pCh[3] = 0x01;
         pCh[4] = 0x00;
-        pCh[5] = m_pModBusClient->GetNewAddress();   // neue Adresse
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(3);
+        pCh[5] = m_pModBusRTUClient->GetNewAddress();   // neue Adresse
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(3);
         break;
     case 5: 
         // Permission for configuration changes
@@ -249,15 +249,15 @@ void CTQS3 :: SetFunction(int func)
         pCh[3] = 0x00; 
         pCh[4] = 0x00;
         pCh[5] = 0x00;
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(3);
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(3);
         break;
     case 2:
     default:
         // Identifikationsanfrage
         pCh[1] = 0x11; 
-        m_pModBusClient->SetEmpfLen(19);
-        m_pModBusClient->SetSendLen(2);
+        m_pModBusRTUClient->SetEmpfLen(19);
+        m_pModBusRTUClient->SetSendLen(2);
         break;
     }
 }

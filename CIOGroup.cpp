@@ -1115,6 +1115,9 @@ void CIOGroup::InitGroup()
         case 150:
             str3 = "Somfy not def.";
             break;
+        case 151:
+            str3 = "MAX not defined";
+            break;
         default:
             str3 = "error not def.!";
             break;
@@ -1184,7 +1187,7 @@ void CIOGroup::LesParam(char *pProgramPath)
     CBerechneAC *pAC;
     CBerechneInteger *pInteger;
     CBerechneWriteMessage *pWriteMessage;
-    CBerechneSomfy *pSomfy;
+    CBerechneSomfy *pBerechneSomfy;
     bool bS0Zaehler;
 
     m_pReadFile = new CReadFile;
@@ -1678,10 +1681,10 @@ void CIOGroup::LesParam(char *pProgramPath)
                 break; 
             case 18: // Somfy
                 pOperBase = new COperBase *[anz];
-                pSomfy = new CBerechneSomfy;  
-                pSomfy->setOper(pOperBase);
-                pSomfy->init(nbre,m_pSomfy);
-                m_pBerechne[idxBerechne] = pSomfy;
+                pBerechneSomfy = new CBerechneSomfy;  
+                pBerechneSomfy->setOper(pOperBase);
+                pBerechneSomfy->init(nbre,m_pSomfy);
+                m_pBerechne[idxBerechne] = pBerechneSomfy;
                 for(i=0; i < anz; i++)
                     pOperBase[i] = pcc->GetOper(i);                 
                 break;                      
@@ -1737,9 +1740,9 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
             else if(strncmp(buf, "MainboardV2.0", 13) == 0 && strlen(buf) == 13)
                 ext_iI2CSwitchType = 2;
             else if(strncmp(buf, "WS10", 4) == 0 && strlen(buf) == 4)
-                m_iMaxAnzModBusClient++;
+                m_iMaxAnzModBusRTUClient++;
             else if(strncmp(buf,"ABBZAEHLER", 10) == 0 && strlen(buf) == 10)
-            {   m_iMaxAnzModBusClient++;
+            {   m_iMaxAnzModBusRTUClient++;
                 m_iMaxAnzZaehler++;
             }
             else if((strncmp(buf, "S0ZAEHLER", 9) == 0 && strlen(buf) == 9)
@@ -1750,14 +1753,14 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
             else if((strncmp(buf, "TQS3", 4) == 0 && strlen(buf) == 4)
                     || (strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
                     || (strncmp(buf, "TQS3SQEARCH", 11) == 0 && strlen(buf) == 11))
-            {   m_iMaxAnzModBusClient++;
+            {   m_iMaxAnzModBusRTUClient++;
                 m_iMaxAnzSensor++;
             }
             else if((strncmp(buf, "TH1", 3) == 0 && strlen(buf) == 3)
                     || (strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
                     ||(strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9))
             {
-                m_iMaxAnzModBusClient++;
+                m_iMaxAnzModBusRTUClient++;
                 m_iMaxAnzSensor++;
             }
             else if((strncmp(buf, "HUELIGHT", 8) == 0 && strlen(buf) == 8)
@@ -1784,7 +1787,7 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
 void CIOGroup::ReadConfig(char *pProgramPath)
 {
     char buf[256];
-    int boardtype, pos, offset, address, i;
+    int boardtype, pos, offset, address, i, iMax;
     int Inh1, Addr2, Inh2, Addr3, Reg, iAddr3;
     string str;
     int AnzAus=0, AnzEin=0, AnzEW=0; 
@@ -1866,9 +1869,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     error = m_pHue->IsDefined();
                 if(error)
                     m_pReadFile->Error(error);
-
                 address = m_pReadFile->ReadNumber();
-                error = m_pHue->SetEntity(2, address);
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(151);
+                iMax = m_pReadFile->ReadNumber();                
+                error = m_pHue->SetEntity(2, address, iMax);
                 if(error)
                     m_pReadFile->Error(error);
             }            
@@ -1880,20 +1885,22 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     error = m_pHue->IsDefined();
                 if(error)
                     m_pReadFile->Error(error);
-
                 address = m_pReadFile->ReadNumber();
-                error = m_pHue->SetEntity(1, address);
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(151);
+                iMax = m_pReadFile->ReadNumber();
+                error = m_pHue->SetEntity(1, address, iMax);
                 if(error)
                     m_pReadFile->Error(error);
             }
             else if(strncmp(buf, "WS10", 4) == 0 && strlen(buf) == 4)
             {
                 address = m_pReadFile->ReadNumber ();
-                if(m_pModBus != NULL)
+                if(m_pModBusRTU != NULL)
                 {
                     if(address > 0 && address < 256)
                     {
-                        CModBusClient *pClient = m_pModBus->AppendModBus(address, 500000);
+                        CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 500000);
                         m_pWStation = new CWStation(address);
                         m_pWStation->SetModBusClient(pClient);
                     }
@@ -1926,12 +1933,12 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         address = m_pReadFile->ReadNumber ();
                         if(address > 0 && address < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             CTQS3 *pPtr;
                             pPtr = new CTQS3(m_iAnzSensor+1);
                             pPtr->SetModBusClient(pClient);
@@ -1957,11 +1964,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     address = m_pReadFile->ReadNumber ();
                     m_pReadFile->ReadBuf(buf, ',');
                     int newAddress = m_pReadFile->ReadNumber();
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         if(address > 0 && address < 256 && newAddress > 0 && newAddress < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             pClient->SetNewAddress(newAddress);
                             CTQS3 *pPtr;
                             pPtr = new CTQS3(m_iAnzSensor+1);
@@ -1985,11 +1992,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
                     address = m_pReadFile->ReadNumber ();
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         if(address > 0 && address < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             CTQS3 *pPtr;
                             pPtr = new CTQS3(m_iAnzSensor+1);
                             pPtr->SetModBusClient(pClient);
@@ -2015,12 +2022,12 @@ void CIOGroup::ReadConfig(char *pProgramPath)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         address = m_pReadFile->ReadNumber ();
                         if(address > 0 && address < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             CTH1 *pPtr;
                             pPtr = new CTH1(m_iAnzSensor+1);
                             pPtr->SetModBusClient(pClient);
@@ -2046,11 +2053,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     address = m_pReadFile->ReadNumber ();
                     m_pReadFile->ReadBuf(buf, ',');
                     int newAddress = m_pReadFile->ReadNumber();
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         if(address > 0 && address < 256 && newAddress > 0 && newAddress < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             pClient->SetNewAddress(newAddress);
                             CTH1 *pPtr;
                             pPtr = new CTH1(m_iAnzSensor+1);
@@ -2086,11 +2093,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
                     address = m_pReadFile->ReadNumber ();
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         if(address > 0 && address < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             CTH1 *pPtr;
                             pPtr = new CTH1(m_iAnzSensor+1);
                             pPtr->SetModBusClient(pClient);
@@ -2192,11 +2199,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     int z2 = readAnzeige();
                     if(z2 < 0)
                         m_pReadFile->Error(85);
-                    if(m_pModBus != NULL)
+                    if(m_pModBusRTU != NULL)
                     {
                         if(address > 0 && address < 256)
                         {
-                            CModBusClient *pClient = m_pModBus->AppendModBus(address, 50000);
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
                             CZaehlerABB *pPtr;
                             pPtr = new CZaehlerABB(m_iAnzZaehler+1);
                             pPtr->SetModBusClient(pClient);
@@ -2216,17 +2223,17 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(66);
 
             }
-            else if(strncmp(buf, "MODBUS", 6) == 0 && strlen(buf) == 6)
+            else if(strncmp(buf, "MODBUSRTU", 9) == 0 && strlen(buf) == 9)
             {
                 address = m_pReadFile->ReadNumber ();
-                if(m_pModBus == NULL)
+                if(m_pModBusRTU == NULL)
                 {
                     switch(address) {
                     case 1:
                         if(m_pRS485_1 != NULL)
                         {
-                            m_pModBus = new CModBus(m_iMaxAnzModBusClient);
-                            m_pModBus->SetCRS485(m_pRS485_1);
+                            m_pModBusRTU = new CModBusRTU(m_iMaxAnzModBusRTUClient);
+                            m_pModBusRTU->SetCRS485(m_pRS485_1);
                         }
                         else
                             m_pReadFile->Error(41);
@@ -2234,8 +2241,8 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     case 2:
                         if(m_pRS485_2 != NULL)
                         {
-                            m_pModBus = new CModBus(m_iMaxAnzModBusClient);
-                            m_pModBus->SetCRS485(m_pRS485_2);
+                            m_pModBusRTU = new CModBusRTU(m_iMaxAnzModBusRTUClient);
+                            m_pModBusRTU->SetCRS485(m_pRS485_2);
                         }
                         else
                             m_pReadFile->Error(41);
@@ -2390,9 +2397,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     error = m_pSomfy->IsDefined();
                 if(error)
                     m_pReadFile->Error(error);
-
-                str = m_pReadFile->ReadText();
-                error = m_pSomfy->SetEntity(1, str);
+                str = m_pReadFile->ReadText(';');
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(151);
+                iMax = m_pReadFile->ReadZahl();
+                error = m_pSomfy->SetEntity(1, iMax, str);
                 if(error)
                     m_pReadFile->Error(error);               
             }
@@ -2404,9 +2413,11 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     error = m_pSomfy->IsDefined();
                 if(error)
                     m_pReadFile->Error(error);
-
-                str = m_pReadFile->ReadText();
-                error = m_pSomfy->SetEntity(2, str);
+                str = m_pReadFile->ReadText(';');
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(151);                
+                iMax = m_pReadFile->ReadZahl();
+                error = m_pSomfy->SetEntity(2, iMax, str);
                 if(error)
                     m_pReadFile->Error(error);               
             }
@@ -3158,7 +3169,7 @@ CIOGroup::CIOGroup()
     m_iChangeSensorModBusAddress = 0;
     m_pRS485_1 = NULL;
     m_pRS485_2 = NULL;
-    m_pModBus = NULL;
+    m_pModBusRTU = NULL;
     m_iAnzZaehler = 0;
     m_iAnzSensor = 0;
     m_gsmtimeslice = 0;
@@ -3176,7 +3187,7 @@ CIOGroup::CIOGroup()
     m_iAusgTest = 0;
     m_iControl = 0;
     m_pAlarmClock = NULL;
-    m_iMaxAnzModBusClient = 0;
+    m_iMaxAnzModBusRTUClient = 0;
     m_iMaxAnzSensor = 0;
     m_iMaxAnzZaehler = 0;
     m_iMaxAnzHueEntity = 0;
@@ -3273,10 +3284,10 @@ CIOGroup::~CIOGroup()
         delete [] m_pZaehler;
         m_pZaehler = NULL;
     }
-    if(m_pModBus)
+    if(m_pModBusRTU)
     {
-        delete m_pModBus;
-        m_pModBus = NULL;
+        delete m_pModBusRTU;
+        m_pModBusRTU = NULL;
     }
 }
 
@@ -3948,6 +3959,9 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                 else {
                     nbr = atoi(&buf[0]);
                     pMenu->m_iTyp = nbr;
+                    len = m_pReadFile->ReadBuf(buf, ',');
+                    if(len)
+                        pMenu->SetImage(buf);
                     m_pReadFile->ReadBuf(buf, ',');
                     switch(nbr) {
                     case 1: // Typ 1 es handelt sich um einen Software-Schalter
@@ -3999,8 +4013,9 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             }
                         }
                         break;
-                    case 10: // es handelt sich um eine HUE-Lampe nur Ein/Aus
-                    case 11: // Hue mit Schalter und Slider für Helligkeit
+                    case 2: // up/stop/down
+                    case 3: // Schalter und Slider
+                    case 4: // up/stop/down und Slider
                         if(strncmp(buf, "HUE", 3) == 0) // Ausgang
                         {
                             nbr = atoi(&buf[3]);
@@ -4013,29 +4028,8 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             }
                             else
                                 m_pReadFile->Error(54);
-                            len = m_pReadFile->ReadBuf(buf, ','); 
-                            if(len)
-                            {
-                                nbr = atoi(&buf[1]);
-                                if(strncmp(buf, "I", 1) == 0)
-                                {
-                                    if(nbr > 0 && nbr <= GetIntegerAnz())
-                                    {
-                                        CBerechneInteger * pBerechneInteger = new CBerechneInteger;
-                                        pBerechneInteger->init(GetIntegerAddress (nbr));
-                                        pMenu->m_pOperChange = pBerechneInteger;
-                                    }
-                                }
-                                else
-                                    m_pReadFile->Error(56);
-                            }                            
-                        } 
-                        else
-                            m_pReadFile->Error(53);
-                        break;
-                    case 20: // es handelt sich um ein Somfy-Element nur Ein/Aus
-                    case 21: // Somfy mit Slider für Helligkeit
-                        if(strncmp(buf, "SOMFY", 5) == 0) // Ausgang
+                        }
+                        else if(strncmp(buf, "SOMFY", 5) == 0)
                         {
                             nbr = atoi(&buf[5]);
                             if(m_pSomfy != NULL && nbr > 0 && nbr <= m_pSomfy->GetAnzEntity())
@@ -4046,28 +4040,28 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             }
                             else
                                 m_pReadFile->Error(54);
-                            len = m_pReadFile->ReadBuf(buf, ','); 
-                            if(len)
-                            {
-                                nbr = atoi(&buf[1]);
-                                if(strncmp(buf, "I", 1) == 0)
-                                {
-                                    if(nbr > 0 && nbr <= GetIntegerAnz())
-                                    {
-                                        CBerechneInteger * pBerechneInteger = new CBerechneInteger; 
-                                        pBerechneInteger->init(GetIntegerAddress(nbr));
-                                        pMenu->m_pOperChange = pBerechneInteger;
-                                    }
-                                    else
-                                        m_pReadFile->Error(57);
-                                }
-                                else
-                                    m_pReadFile->Error(56);
-                            }                            
-                        } 
+                        }
                         else
                             m_pReadFile->Error(53);
-                        break;                        
+                        len = m_pReadFile->ReadBuf(buf, ','); 
+                        if(len)
+                        {
+                            nbr = atoi(&buf[1]);
+                            if(strncmp(buf, "I", 1) == 0)
+                            {
+                                if(nbr > 0 && nbr <= GetIntegerAnz())
+                                {
+                                    CBerechneInteger * pBerechneInteger = new CBerechneInteger;
+                                    pBerechneInteger->init(GetIntegerAddress (nbr));
+                                    pMenu->m_pOperChange = pBerechneInteger;
+                                }
+                            }
+                            else
+                                m_pReadFile->Error(56);
+                        }
+                        else
+                            m_pReadFile->Error(53);                                                  
+                        break;                       
                     default:
                         m_pReadFile->Error(56);
                         break;

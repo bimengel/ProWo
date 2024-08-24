@@ -60,7 +60,7 @@ class CWStation
 public:
     CWStation(int nr);
     ~CWStation();  
-    void SetModBusClient(CModBusClient *pClient);
+    void SetModBusClient(CModBusRTUClient *pClient);
     void LesenStarten();
     void SetFunction(int iFunc);
     int GetParam(int iParam);
@@ -71,7 +71,7 @@ public:
 protected:
     bool m_bFirst;
     int m_iNr;
-    CModBusClient *m_pModBusClient; 
+    CModBusRTUClient *m_pModBusRTUClient; 
     signed short m_ssMesswerteStatus[ANZMESSWERTESTATUS];
     signed short m_ssMesswerteService[ANZMESSWERTESERVICE];
     unsigned short m_usWG60[60]; 

@@ -57,13 +57,13 @@ class CSensorModBus : public CSensor
 {
 public:
 	CSensorModBus(int nr);
-	void SetModBusClient(CModBusClient * pModBusClient);
+	void SetModBusClient(CModBusRTUClient * pModBusClient);
 	virtual int LesenStarten() { return 0;};
     virtual void SetFunction(int func) {};
     
 protected:
 	int m_iFunction; 
-	CModBusClient * m_pModBusClient;
+	CModBusRTUClient * m_pModBusRTUClient;
 };
 
 class CTQS3 : public CSensorModBus

@@ -415,25 +415,25 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                     Send(str.c_str());
                     switch(pTitel->m_iTyp) {
                     case 1: // Untermenü Steuerung
+                        str = "\"status\":\"not\"}";                    
                         if(pTitel->m_bSammelSchalter)
                         {
-                            bool bStatus = false;
+                            int iStatus = 0, iVal;
                             while(pTitel->m_pNextMenu && pTitel->m_pNextMenu->m_iNiv1 == iNiv1
                                 && pTitel->m_pNextMenu->m_iNiv2 == i)//&& pTitel->m_pNextMenu->m_iNiv3 == i)
                             {   
-                            pTitel = pTitel->m_pNextMenu;
-                            pthread_mutex_lock(&ext_mutexNodejs);
-                            if((int)(pTitel->m_pOperState->GetState() % 256))
-                                bStatus = true;
-                            pthread_mutex_unlock(&ext_mutexNodejs);
+                                pTitel = pTitel->m_pNextMenu;                                
+                                pthread_mutex_lock(&ext_mutexNodejs);
+                                iVal = pTitel->m_pOperState->GetState();
+                                pthread_mutex_unlock(&ext_mutexNodejs);                                
+                                if(iVal % 256) // gesetzt wenn einer gesetzt
+                                {
+                                    iStatus = iVal;
+                                    break;
+                                }
                             }
-                            if(bStatus)
-                                str = "\"status\":\"true\"}";
-                            else
-                                str = "\"status\":\"false\"}";                            
+                            str = "\"status\":\"" + to_string(iStatus) + "\"}";
                         }
-                        else
-                            str = "\"status\":\"not\"}";
                         Send(str.c_str());
                         break;
                     default:
@@ -470,20 +470,17 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                     Send(str.c_str());
                     str = "\"prowotype\":" + to_string( pTitel->m_iTyp) + ",";  
                     Send(str.c_str());
-                    switch(pTitel->m_iTyp) {
-                    case 1: // Text, Grafik und Status 
-                    case 10: // HUE Lampe oder Gruppe
-                    case 11: // Hue Schalter mit Slider
-                    case 20: // Somfy nur Schalter
-                    case 21: // Somfy mit Schalter und Slider
-                        pthread_mutex_lock(&ext_mutexNodejs);                     
-                        str = "\"status\":\"" + to_string(pTitel->m_pOperState->GetState()) + "\"}";                       
-                        pthread_mutex_unlock(&ext_mutexNodejs);
-                        Send(str.c_str());
-                        break;
-                    default:
-                        break;
-                    }
+                    if(pTitel->m_pImage == NULL)
+                        str = "\"image\":\"\",";
+                    else
+                        str = "\"image\":\"" + string(pTitel->m_pImage) + "\",";
+                    Send(str.c_str()); 
+                    str = "\"max\":\"" + to_string(pTitel->m_pOperState->GetMax())  + "\",";
+                    Send(str.c_str());                 
+                    pthread_mutex_lock(&ext_mutexNodejs);                     
+                    str = "\"status\":\"" + to_string(pTitel->m_pOperState->GetState()) + "\"}";                       
+                    pthread_mutex_unlock(&ext_mutexNodejs);
+                    Send(str.c_str());
                 }
             }
             str = "]}";
@@ -498,32 +495,22 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         if(pTitel != NULL) {
             iLen = ReadBuf(buf, ';');
             iState = atoi(buf);           
-            switch(pTitel->m_iTyp) {
-            case 1: // Schalter ist betätigt worden 
-            case 10: // HUE Schalter
-            case 11: // Hue mit Schalter und Slider
-            case 20:
-            case 21:
-                pthread_mutex_lock(&ext_mutexNodejs);
-                if(pTitel->m_pOperChange)
-                    pTitel->m_pOperChange->SetState(iState);
-                else 
+            pthread_mutex_lock(&ext_mutexNodejs);
+            if(pTitel->m_pOperChange)
+                pTitel->m_pOperChange->SetState(iState);
+            else 
+            {
+                for(i=1; ;i++) 
                 {
-                    for(i=1; ;i++) 
-                    {
-                        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, i, 0);
-                        if(pTitel != NULL && pTitel->m_pOperChange != NULL)
-                            pTitel->m_pOperChange->SetState(iState);
-                        else
-                            break;
-                    }
+                    pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, i, 0);
+                    if(pTitel != NULL && pTitel->m_pOperChange != NULL)
+                        pTitel->m_pOperChange->SetState(iState);
+                    else
+                        break;
                 }
-                m_pIOGroup->SetBerechne();
-                pthread_mutex_unlock(&ext_mutexNodejs);
-                break;
-            default:
-                break;
             }
+            m_pIOGroup->SetBerechne();
+            pthread_mutex_unlock(&ext_mutexNodejs);
             str = "{\"type\":3}";
             Send(str.c_str());
         }    

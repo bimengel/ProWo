@@ -68,10 +68,10 @@ class CZaehlerABB : public CZaehler
 public:
     CZaehlerABB(int nr);
     virtual void LesenStarten();
-    void SetModBusClient(CModBusClient * pModBusClient);
+    void SetModBusClient(CModBusRTUClient * pModBusClient);
 
 protected:
-    CModBusClient * m_pModBusClient;
+    CModBusRTUClient * m_pModBusRTUClient;
 	
 };
 

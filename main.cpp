@@ -371,15 +371,15 @@ void *ThreadModbusProc(void * ptr)
 {
 	bThreadModbus = false;
     
-    if(iogrp->m_pModBus == NULL)
+    if(iogrp->m_pModBusRTU == NULL)
         return (void *)NULL;
 
     bThreadModbus = true;
     while(bRunProgram)
     {
         delayMicroseconds(ZYKLUSZEIT);
-        if(iogrp->m_pModBus != NULL)
-            iogrp->m_pModBus->Control();
+        if(iogrp->m_pModBusRTU != NULL)
+            iogrp->m_pModBusRTU->Control();
     }
     bThreadModbus = false;
     return (void *) NULL;

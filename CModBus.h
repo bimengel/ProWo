@@ -17,8 +17,8 @@ ProWo is free software: you can redistribute it and/or modify it
  * with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CMODBUS_H_
-#define _CMODBUS_H_
+#ifndef _CModBusRTU_H_
+#define _CModBusRTU_H_
 
 #define ANZSENDCHAR	256
 #define ANZRECEIVECHAR  256
@@ -26,11 +26,11 @@ ProWo is free software: you can redistribute it and/or modify it
 // Errors
 #define ERRCRC		10
 
-class CModBusClient
+class CModBusRTUClient
 {
 
 public:
-    CModBusClient();
+    CModBusRTUClient();
     int SetAddress(int address, pthread_mutex_t *pmutext);
     void SetAddress(int address);
     void SetNewAddress(int newAddress);
@@ -57,7 +57,7 @@ protected:
     int m_iEmpfLen;
     int m_iStatus;
     int m_iError;
-    pthread_mutex_t *m_pmutexModBus;
+    pthread_mutex_t *m_pmutexModBusRTU;
 	
 private:
 
@@ -66,20 +66,29 @@ private:
 class CModBus
 {
 public:
-    CModBus(int iMaxAnzModBusClient);
-    ~CModBus();
-    CModBusClient * AppendModBus(int Address, int iWaitBetweenProtocol);
-    void SetCRS485(CRS485 * pCRS485);
+    CModBus();
     int GetAnzClient();
-    void Control();
+    virtual void Control() { return; };
+
+protected:
+    int m_iMaxAnzModBusClient; 
+    int m_iAnzModBusClient;      
+};
+
+class CModBusRTU : public CModBus
+{
+public:
+    CModBusRTU(int iMaxAnzModBusClient);
+    ~CModBusRTU();
+    CModBusRTUClient * AppendModBus(int Address, int iWaitBetweenProtocol);
+    void SetCRS485(CRS485 * pCRS485);
+    virtual void Control();
 	
 protected:
-    int m_iMaxAnzModBusClient;
     unsigned int CalcCRC(unsigned char* ptr, int length);
-    CModBusClient **m_pModBusClient;
+    CModBusRTUClient **m_pModBusRTUClient;
     CRS485 * m_pRS485;
     pthread_mutex_t m_mutexModBus;
-    int m_iAnzModBusClient;
     int m_iaktAktiv;
     int m_iWait;
     int m_iWaitBetweenProtocol;
@@ -87,4 +96,4 @@ protected:
 private:
 
 };
-#endif // _CMODBUS_H_
+#endif // _CModBusRTU_H_

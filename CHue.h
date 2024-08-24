@@ -30,11 +30,12 @@ class CHueEntity {
 public:
     CHueEntity();
     ~CHueEntity();
-    void init(int iNr, int typ, int id, char *pHueFifo);
+    void init(int iNr, int typ, int id, int iMax, char *pHueFifo);
     int GetState();
     void SetState(int state);
     int GetTyp();
     int GetID();
+    int GetMax();
     
 private:
     int m_iNr;      // wird gebraucht für die History
@@ -42,6 +43,7 @@ private:
     int m_iID;
     int m_iState; // on or off
     int m_iBrightness;
+    int m_iMax;
     char *m_pHue; 
 };
 
@@ -51,7 +53,7 @@ public:
     ~CHue();
     void SetUser(string str);
     void SetIP(string str);
-    int SetEntity(int typ, int address);
+    int SetEntity(int typ, int address, int iMax);
     int IsDefined();
     int GetAnzEntity();
     CHueEntity * GetAddress(int nr);
@@ -87,7 +89,8 @@ class CBerechneHue : public CBerechneBase
 public:
     void init(CHueEntity *pHueEntity);
     virtual void SetState(int state);
-    virtual int GetState();    
+    virtual int GetState(); 
+    virtual int GetMax();   
 protected:
     CHueEntity *m_pHueEntity;
 };

@@ -121,7 +121,7 @@ void CZaehlerZT::Increment(int iVal)
 //
 CZaehlerABB::CZaehlerABB(int nr):CZaehler (nr)
 {
-    m_pModBusClient = NULL;
+    m_pModBusRTUClient = NULL;
     m_iFactor = 100;
     m_iTyp = 1;
 }
@@ -133,13 +133,13 @@ void CZaehlerABB::LesenStarten()
     char ptrLog[100];
     int iStand;
 
-    ret = m_pModBusClient->GetStatus();
+    ret = m_pModBusRTUClient->GetStatus();
     if(ret == 3) // Empfang ist erfolgt
     {   
-        ret = m_pModBusClient->GetError(); 
+        ret = m_pModBusRTUClient->GetError(); 
         if(!ret)
         {
-            ptr = m_pModBusClient->GetEmpfPtr();
+            ptr = m_pModBusRTUClient->GetEmpfPtr();
             iStand = ((ptr[7]*256 + ptr[8])*256 + ptr[9])*256 + ptr[10];
             pthread_mutex_lock(&ext_mutexNodejs);             
             m_iStandGanzzahl = iStand / m_iFactor;
@@ -154,12 +154,12 @@ void CZaehlerABB::LesenStarten()
     }
 
     // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
-    m_pModBusClient->StartSend();
+    m_pModBusRTUClient->StartSend();
 }
 
-void CZaehlerABB :: SetModBusClient(CModBusClient * pClient)
+void CZaehlerABB :: SetModBusClient(CModBusRTUClient * pClient)
 {
-    m_pModBusClient = pClient;
+    m_pModBusRTUClient = pClient;
     unsigned char *pCh = pClient->GetSendPtr ();
     pCh[1] = 0x03;
     pCh[2] = 0x50;

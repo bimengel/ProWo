@@ -210,14 +210,14 @@ CHue::CHue(char * pIOGroup)
     curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
 }
 
-int CHue::SetEntity(int typ, int ID)
+int CHue::SetEntity(int typ, int ID, int iMax)
 {
     int error = 0;
     CHueEntity * pHueEntity;
     if(m_iAnzahlEntity < ((CIOGroup *)m_pIOGroup)->m_iMaxAnzHueEntity) 
     {
         pHueEntity = new CHueEntity;
-        pHueEntity->init(m_iAnzahlEntity+1, typ, ID, (char*)(this));
+        pHueEntity->init(m_iAnzahlEntity+1, typ, ID, iMax, (char*)(this));
         m_pHueEntity[m_iAnzahlEntity] = pHueEntity;
         m_iAnzahlEntity++;
     }
@@ -303,16 +303,18 @@ CHueEntity::CHueEntity()
     m_iBrightness = 255;
     m_pHue = NULL;
     m_iNr = 0;
+    m_iMax = 100;
 }
 CHueEntity::~CHueEntity()
 {
 
 }
-void CHueEntity::init(int iNr, int typ, int id, char *pHue)
+void CHueEntity::init(int iNr, int typ, int id, int iMax, char *pHue)
 {
     m_iNr = iNr;
     m_iTyp = typ;
     m_iID = id;
+    m_iMax = iMax;
     m_pHue = pHue;
 }
 
@@ -344,6 +346,10 @@ int CHueEntity::GetID()
 {
     return m_iID;
 }
+int CHueEntity::GetMax()
+{
+    return m_iMax;
+}
 
 COperHue::COperHue()
 {
@@ -371,5 +377,9 @@ void CBerechneHue::init(CHueEntity *pHueEntity)
 int CBerechneHue::GetState()
 {
     return m_pHueEntity->GetState();
+}
+int CBerechneHue::GetMax()
+{
+    return m_pHueEntity->GetMax();
 }
 

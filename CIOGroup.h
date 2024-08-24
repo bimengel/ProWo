@@ -38,7 +38,7 @@ class CIOGroup
 public:
     CRS485spi * m_pRS485_1;     // linke Schnittstelle über spi
     CRS485ob * m_pRS485_2;      // rechte Schnittstelle RaspberryPi onboard
-    CModBus *m_pModBus;
+    CModBusRTU *m_pModBusRTU;
     CBrowserMenu *m_pBrowserMenu;
     CWStation *m_pWStation;
     
@@ -60,7 +60,7 @@ public:
     std::map<int,class CWriteMessage> m_mapWriteMessage;  
 
 protected:
-    int m_iMaxAnzModBusClient; 
+    int m_iMaxAnzModBusRTUClient; 
     bool m_bBerechne;           // Zustand der Ausgänge muss neu errechnet werden
     bool m_bBerechneHeizung;
     int m_iControl;             // wenn 20x hintereinander ein Interrupt ansteht

@@ -29,9 +29,9 @@ CWStation::~CWStation()
     for(i=0; i < ANZWSVALUESTATISTIC; i++)
         delete m_pWSValueStatistic[i];
 }
-void CWStation::SetModBusClient(CModBusClient *pClient)
+void CWStation::SetModBusClient(CModBusRTUClient *pClient)
 {
-    m_pModBusClient = pClient;
+    m_pModBusRTUClient = pClient;
     SetFunction(2);
 }
 CWSValue * CWStation::GetPtrWSValue(int iIdx)
@@ -43,7 +43,7 @@ CWSValue * CWStation::GetPtrWSValue(int iIdx)
 }
 void CWStation::SetFunction(int iFunc)
 {
-    unsigned char *pCh = m_pModBusClient->GetSendPtr ();
+    unsigned char *pCh = m_pModBusRTUClient->GetSendPtr ();
     switch (iFunc) {
         case 1:     // Messwerte Status
             pCh[1] = 4;  // Funktion
@@ -51,8 +51,8 @@ void CWStation::SetFunction(int iFunc)
             pCh[3] = 0;
             pCh[4] = 0;    // Anzahl Register
             pCh[5] = ANZMESSWERTESTATUS;
-            m_pModBusClient->SetSendLen(6);
-            m_pModBusClient->SetEmpfLen(ANZMESSWERTESTATUS * 2);
+            m_pModBusRTUClient->SetSendLen(6);
+            m_pModBusRTUClient->SetEmpfLen(ANZMESSWERTESTATUS * 2);
             break;
         case 2:  // Messwerte - Service
             pCh[1] = 4;
@@ -60,8 +60,8 @@ void CWStation::SetFunction(int iFunc)
             pCh[3] = 139;
             pCh[4] = 0;
             pCh[5] = ANZMESSWERTESERVICE;
-            m_pModBusClient->SetSendLen(6);
-            m_pModBusClient->SetEmpfLen(ANZMESSWERTESERVICE * 2);
+            m_pModBusRTUClient->SetSendLen(6);
+            m_pModBusRTUClient->SetEmpfLen(ANZMESSWERTESERVICE * 2);
             break;
         default:
             break;
@@ -77,12 +77,12 @@ void CWStation::LesenStarten()
     int ret = 0;
     char ptrLog[MSGSIZE];
 
-    status = m_pModBusClient->GetStatus();  
+    status = m_pModBusRTUClient->GetStatus();  
     if(status == 3) // Empfang ist erfolgt
     {   
-        status = m_pModBusClient->GetError ();
-        ptr = m_pModBusClient->GetEmpfPtr();
-        unsigned char *pCh = m_pModBusClient->GetSendPtr ();        
+        status = m_pModBusRTUClient->GetError ();
+        ptr = m_pModBusRTUClient->GetEmpfPtr();
+        unsigned char *pCh = m_pModBusRTUClient->GetSendPtr ();        
         if(!status)
         {   
             if(pCh[3] == 0)  // Messwerte-Status
@@ -146,7 +146,7 @@ void CWStation::LesenStarten()
             ret = -1;
         }
     }
-    m_pModBusClient->StartSend();
+    m_pModBusRTUClient->StartSend();
 }
 
 void CWStation::TagWechsel()

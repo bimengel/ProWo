@@ -18,11 +18,11 @@ int CTH1 :: LesenStarten()
     char ptrLog[100];
     int32_t voc_index = 0;
     
-    status = m_pModBusClient->GetStatus();  
+    status = m_pModBusRTUClient->GetStatus();  
     if(status == 3) // Empfang ist erfolgt
     {   
-        status = m_pModBusClient->GetError ();
-        ptr = m_pModBusClient->GetEmpfPtr();
+        status = m_pModBusRTUClient->GetError ();
+        ptr = m_pModBusRTUClient->GetEmpfPtr();
         if(!status)
         {
             switch(m_iFunction) {
@@ -41,28 +41,28 @@ int CTH1 :: LesenStarten()
                 }
                 else
                 {   
-                    sprintf(ptrLog, "TH1 - Nummer: %d  Address: %d incorrect temperature", m_iNummer, m_pModBusClient->GetAddress());				    ;
+                    sprintf(ptrLog, "TH1 - Nummer: %d  Address: %d incorrect temperature", m_iNummer, m_pModBusRTUClient->GetAddress());				    ;
                     syslog(LOG_ERR, ptrLog);
                 }
                 break;
 
             case 2: // Identification
-                ret = m_pModBusClient->GetEmpfLen();
+                ret = m_pModBusRTUClient->GetEmpfLen();
                 *(ptr+ret+3) = 0;
-                sprintf(ptrLog, "TH1 Modbus-Address = %d, ID = %s", m_pModBusClient->GetAddress() , ptr+5);
+                sprintf(ptrLog, "TH1 Modbus-Address = %d, ID = %s", m_pModBusRTUClient->GetAddress() , ptr+5);
                 syslog(LOG_INFO, ptrLog);
-                ret = m_pModBusClient->GetAddress();
+                ret = m_pModBusRTUClient->GetAddress();
                 SetFunction(1, 0, 0);
                 break;
 
             case 3: // Adresse geändert
-                ret = m_pModBusClient->GetNewAddress();
-                ptr = m_pModBusClient->GetEmpfPtr();
+                ret = m_pModBusRTUClient->GetNewAddress();
+                ptr = m_pModBusRTUClient->GetEmpfPtr();
                 if(*(ptr+4) == (unsigned char)ret)
                 {
                     sprintf(ptrLog, "Adresse geändert");
                     syslog(LOG_INFO, ptrLog);
-                    m_pModBusClient->SetAddress(ret);
+                    m_pModBusRTUClient->SetAddress(ret);
                 }
                 else
                 {
@@ -77,7 +77,7 @@ int CTH1 :: LesenStarten()
         }
         else
         {	
-            int adr = m_pModBusClient->GetAddress();
+            int adr = m_pModBusRTUClient->GetAddress();
             if(m_iFunction == 2)
             {
                 if(adr > 255)
@@ -87,7 +87,7 @@ int CTH1 :: LesenStarten()
                 }    
                 else
                     adr++;
-                m_pModBusClient->SetAddress(adr);		
+                m_pModBusRTUClient->SetAddress(adr);		
             }
             else
             {
@@ -97,10 +97,10 @@ int CTH1 :: LesenStarten()
             }
         }
         // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
-        m_pModBusClient->StartSend();
+        m_pModBusRTUClient->StartSend();
     }
     if(status == 0)
-        m_pModBusClient->StartSend();
+        m_pModBusRTUClient->StartSend();
     return(ret);
 }
 
@@ -115,7 +115,7 @@ CTH1::~CTH1() {
 
 void CTH1 :: SetFunction(int func, int iLED, int iI2CTakt)
 {
-    unsigned char *pCh = m_pModBusClient->GetSendPtr ();
+    unsigned char *pCh = m_pModBusRTUClient->GetSendPtr ();
     m_iFunction = func;
 
     switch(func) {
@@ -128,8 +128,8 @@ void CTH1 :: SetFunction(int func, int iLED, int iI2CTakt)
         pCh[3] = iI2CTakt * 2 + iLED;
         pCh[4] = 0x00; // register count
         pCh[5] = 0x03;
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(8);
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(8);
         break;
     case 3: 
         // Adresse ändern
@@ -137,9 +137,9 @@ void CTH1 :: SetFunction(int func, int iLED, int iI2CTakt)
         pCh[2] = 0x00;
         pCh[3] = 0x01;
         pCh[4] = 0x00;
-        pCh[5] = m_pModBusClient->GetNewAddress();   // neue Adresse
-        m_pModBusClient->SetSendLen(6);
-        m_pModBusClient->SetEmpfLen(3);
+        pCh[5] = m_pModBusRTUClient->GetNewAddress();   // neue Adresse
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(3);
         break;
     case 2:
     default:
@@ -149,8 +149,8 @@ void CTH1 :: SetFunction(int func, int iLED, int iI2CTakt)
         pCh[3] = 0x00; 
         pCh[4] = 0x00;
         pCh[5] = 0x00;        
-        m_pModBusClient->SetEmpfLen(14);
-        m_pModBusClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(14);
+        m_pModBusRTUClient->SetSendLen(6);
         break;
     }
 }

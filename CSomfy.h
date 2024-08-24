@@ -1,11 +1,13 @@
 #ifndef CSOMFY_H
 #define CSOMFY_H
 
+// Diese Klasse wird im Fifo-Register abgelegt
 class CSomfyProperty {
+
 public:
     CSomfyProperty();
     int m_iState;
-    int m_iBrightness;
+    int m_iVal;
     int m_iNr;
     int m_iTyp;         // zB Licht oder Rollo
     int m_iSource;      // 1 = Parameter, 2 = Lichtprogramm    
@@ -16,19 +18,21 @@ class CSomfyEntity {
 public:
     CSomfyEntity();
     ~CSomfyEntity();
-    void init(int iNr, int typ, char *pSomfy, string strUrl);
+    void init(int iNr, int typ, int iMax, char *pSomfy, string strUrl);
     int GetState();
     void SetState(int iVal);
+    int GetMax();
     int GetTyp();
     int GetID();
     string GetstrUrl();
     
 private:
     int m_iNr;      // wird gebraucht für die History
-    int m_iTyp;
+    int m_iTyp;     // 
     int m_iID;
     int m_iState; // on or off
-    int m_iBrightness;
+    int m_iVal;
+    int m_iMax;
     string m_strUrl;
     char *m_pSomfy;
 };
@@ -41,7 +45,7 @@ public:
     void SetPort(int iPort);
     void SetToken(string strToken);
     void Control();
-    int SetEntity(int typ, string m_strUrl);
+    int SetEntity(int typ, int iMax, string m_strUrl);
     int GetAnzEntity();
     int IsDefined();
     CSomfyEntity * GetAddress(int nr); 
@@ -68,7 +72,9 @@ public:
     CBerechneSomfy();
     void init(int nr, CSomfy *pSomfy);
     virtual void SetState(int state);
-    virtual int GetState();    
+    virtual int GetState(); 
+    virtual int GetMax();
+       
 protected:
     CSomfy *m_pSomfy;
 };
