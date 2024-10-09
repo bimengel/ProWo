@@ -172,7 +172,7 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     }
     pTitel = m_pIOGroup->m_pBrowserMenu->SearchGroup(0);
     str = "{\"type\":1,\"pos\":" + to_string(pos) + ",\"anzahl\":" + to_string(anz) + ",\"title\":\"" 
-                                    + string(pTitel->m_pText) + "\",";
+                                    + string(pTitel->GetText()) + "\",";
     Send(str.c_str());
     str = "\"navbar\":[";
     Send(str.c_str());
@@ -191,12 +191,12 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                 str = ",";
                 Send(str.c_str());
             }
-            str = "{\"id\":\"" + to_string(pTitel->m_iNiv1) + "_" + to_string(pTitel->m_iNiv2) 
-                            + "_" + to_string(pTitel->m_iNiv3) + "_" + to_string(pTitel->m_iNiv4) +"\",";
+            str = "{\"id\":\"" + to_string(pTitel->GetNiv1()) + "_" + to_string(pTitel->GetNiv2()) 
+                            + "_" + to_string(pTitel->GetNiv3()) + "_" + to_string(pTitel->GetNiv4()) +"\",";
             Send(str.c_str());
-            str = "\"text\":\"" + string( pTitel->m_pText) + "\",";
+            str = "\"text\":\"" + string( pTitel->GetText()) + "\",";
             Send(str.c_str());
-            str = "\"image\":\"" + string(pTitel->m_pImage) + "\"}";
+            str = "\"image\":\"" + string(pTitel->GetImage()) + "\"}";
             Send(str.c_str());
         }
     }
@@ -372,156 +372,200 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
     class CBrowserEntity menu;
     class CBrowserEntity *pTitel;
     class CBrowserEntity *pMenu;
-    int i, iState, iLen;
-    bool bFirst;
+    int iLen, iCase, iState;
+    bool bFirst, bContinue = true;
     string str;
   
     ReadBuf(buf, ';');
     if(buf[0] == '1') // gebe das nächste Menü zurück
     {
-        // den Status aller Hue Lampen und Gruppen einlesen
-        //m_pIOGroup->LesHUE();
-        
-        if(iNiv2 == 0) // Untermenü
+        if(iNiv2 == 0)
+        {   iCase = 2;
+            iNiv2 = 1;
+        }
+        else if(iNiv3 == 0)
+        {   iCase = 3;
+            iNiv3 = 1;
+        }
+        else
+        {   iCase = 4;
+            iNiv4 = 1;
+        }
+        bFirst = true;
+        str = "{\"type\":1,\"list\":[ ";
+        Send(str.c_str());            
+        while(bContinue)
         {
-            bFirst = true;
-            str = "{\"type\" : 1, \"list\" : [ ";
-            Send(str.c_str());            
-            for(i=1; i ;i++)
-            {
-                pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, i, 0, 0);
-                if(pTitel == NULL)
-                    break;
+            pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+            if(pTitel == NULL)
+                bContinue = false;
+            else
+            {   
+                str = "";
+                if(bFirst) 
+                    bFirst = false;
+                else 
+                    str = ",";
+                str += "{\"id\":\"" + to_string(iNiv1)
+                                    + "_" + to_string(iNiv2)
+                                    + "_" + to_string(iNiv3)
+                                    + "_" + to_string(iNiv4) +"\",";                                     
+                Send(str.c_str());
+                str = "\"text\":\"" + string(pTitel->GetText()) + "\",";
+                Send(str.c_str());
+                if(pTitel->GetImage() == NULL)
+                    str = "\"image\":\"\",";
                 else
-                {   
-                    str = "";
-                    if(bFirst) 
-                        bFirst = false;
-                    else 
-                        str = ",";
-                    str += "{\"id\":\"" + to_string( pTitel->m_iNiv1)
-                                        + "_" + to_string( pTitel->m_iNiv2)
-                                        + "_" + to_string( pTitel->m_iNiv3)
-                                        + "_" + to_string( pTitel->m_iNiv4) +"\",";                                     
-                    Send(str.c_str());
-                    str = "\"text\":\"" + string(pTitel->m_pText) + "\",";
-                    Send(str.c_str());
-                    if(pTitel->m_pImage == NULL)
-                        str = "\"image\":\"\",";
-                    else
-                        str = "\"image\":\"" + string(pTitel->m_pImage) + "\",";
-                    Send(str.c_str());
-                    str = "\"prowotype\":" + to_string(pTitel->m_iTyp) + ",";
-                    Send(str.c_str());
-                    switch(pTitel->m_iTyp) {
-                    case 1: // Untermenü Steuerung
-                        str = "\"status\":\"not\"}";                    
-                        if(pTitel->m_bSammelSchalter)
-                        {
-                            int iStatus = 0, iVal;
-                            while(pTitel->m_pNextMenu && pTitel->m_pNextMenu->m_iNiv1 == iNiv1
-                                && pTitel->m_pNextMenu->m_iNiv2 == i)//&& pTitel->m_pNextMenu->m_iNiv3 == i)
-                            {   
-                                pTitel = pTitel->m_pNextMenu;                                
-                                pthread_mutex_lock(&ext_mutexNodejs);
-                                iVal = pTitel->m_pOperState->GetState();
-                                pthread_mutex_unlock(&ext_mutexNodejs);                                
-                                if(iVal % 256) // gesetzt wenn einer gesetzt
-                                {
-                                    iStatus = iVal;
-                                    break;
-                                }
-                            }
-                            str = "\"status\":\"" + to_string(iStatus) + "\"}";
-                        }
-                        Send(str.c_str());
-                        break;
-                    default:
-                        break;
+                    str = "\"image\":\"" + string(pTitel->GetImage()) + "\",";
+                Send(str.c_str());
+                str = "\"prowotype\":" + to_string(pTitel->GetTyp()) + ",";
+                Send(str.c_str());
+                str ="\"status\":";
+                switch(pTitel->GetTyp()) {
+                case 1:
+                    str += "\"not\"}"; 
+                    break;
+                case 2:
+                case 3:
+                case 4:
+                case 5:
+                    if(pTitel->GetSammelSchalter())
+                    {   iState = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4);
+                        str += to_string(iState) + "}";
                     }
-                }
-            }
-            str = "]}";
-            Send(str.c_str());
-        }
-        // Ebene 3
-        else if(iNiv3 == 0) // Schaltebene
-        {
-            str = "{\"type\":2,\"list\":[";
-            Send(str.c_str());
-            bFirst = true;
-            for(i=1; i ;i++)
-            {
-                pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, i, 0);
-                if(pTitel == NULL)
-                    break;
-                else
-                {   str ="";
-                    if(bFirst) 
-                        bFirst = false;
-                    else 
-                        str = ",";
-                    str += "{\"id\":\"" + to_string( pTitel->m_iNiv1)
-                                        + "_" + to_string( pTitel->m_iNiv2)
-                                        + "_" + to_string( pTitel->m_iNiv3)
-                                        + "_" + to_string( pTitel->m_iNiv4) +"\",";    
-                    Send(str.c_str());
-                    str =  "\"text\":\""+ string(pTitel->m_pText) + "\",";
-                    Send(str.c_str());
-                    str = "\"prowotype\":" + to_string( pTitel->m_iTyp) + ",";  
-                    Send(str.c_str());
-                    if(pTitel->m_pImage == NULL)
-                        str = "\"image\":\"\",";
                     else
-                        str = "\"image\":\"" + string(pTitel->m_pImage) + "\",";
-                    Send(str.c_str()); 
-                    str = "\"max\":\"" + to_string(pTitel->m_pOperState->GetMax())  + "\",";
-                    Send(str.c_str());                 
-                    pthread_mutex_lock(&ext_mutexNodejs);                     
-                    str = "\"status\":\"" + to_string(pTitel->m_pOperState->GetState()) + "\"}";                       
-                    pthread_mutex_unlock(&ext_mutexNodejs);
-                    Send(str.c_str());
+                        str += to_string(pTitel->GetOperState()->GetState()) + "}";
+                    break;                
+                default: 
+                    str += "\"not\"}";   
+                    break;
+                }                 
+                Send(str.c_str());                
+                switch(iCase){
+                case 2:
+                    iNiv2++;
+                    break;
+                case 3:
+                    iNiv3++;
+                    break;
+                case 4:
+                    iNiv4++;
+                    break;
+                default:
+                    bContinue = false;
+                    break;
                 }
             }
-            str = "]}";
-            Send(str.c_str());            
         }
-
+        str = "]}";
+        Send(str.c_str());        
     }
     else if(buf[0] == '2') 
-    { 
+    {  
         //Daten werden empfangen und sollen abgespeichert werden 
-        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, 0);
-        if(pTitel != NULL) {
+        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pTitel != NULL) 
+        {
             iLen = ReadBuf(buf, ';');
             iState = atoi(buf);           
             pthread_mutex_lock(&ext_mutexNodejs);
-            if(pTitel->m_pOperChange)
-                pTitel->m_pOperChange->SetState(iState);
-            else 
+            if(!pTitel->GetSammelSchalter())
             {
-                for(i=1; ;i++) 
-                {
-                    pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, i, 0);
-                    if(pTitel != NULL && pTitel->m_pOperChange != NULL)
-                        pTitel->m_pOperChange->SetState(iState);
-                    else
-                        break;
-                }
+                if(pTitel->GetOperChange())
+                    pTitel->GetOperChange()->SetState(iState);
             }
+            else 
+                ActivateSammelSchalter(iNiv1, iNiv2, iNiv3, iNiv4, iState);
             m_pIOGroup->SetBerechne();
             pthread_mutex_unlock(&ext_mutexNodejs);
-            str = "{\"type\":3}";
+            str = "{\"type\":2}";
             Send(str.c_str());
         }    
     }
     else {
-        str += "{\"type\":3,\"id\":\"" + to_string( pTitel->m_iNiv1) + "_" + to_string( pTitel->m_iNiv2)
-                        + "_" + to_string( pTitel->m_iNiv3) + "_" + to_string( pTitel->m_iNiv4) +"\",\"error\":\"falsche ID\"}"; 
+        str += "{\"type\":4,\"id\":\"" + to_string( pTitel->GetNiv1()) + "_" + to_string( pTitel->GetNiv2())
+                        + "_" + to_string( pTitel->GetNiv3()) + "_" + to_string( pTitel->GetNiv4()) +"\",\"error\":\"falsche ID\"}"; 
         Send(str.c_str());
     }
+
 }
 
+int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
+{
+    int iState, iBrightness, iHelpState, iHelpBrightness, state, i;
+    class CBrowserEntity *pTitel;
+
+    iState = 0;
+    iBrightness = 0;
+    if(iNiv3)
+    {   iNiv4 = 1;
+        i = 1;
+    }
+    else
+    {
+        iNiv3 = 1;
+        i = 0;
+    }
+    while(true)
+    {
+        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pTitel == NULL)
+            break;
+        if(pTitel->GetSammelSchalter())
+            state = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4);
+        else
+        {
+            if(pTitel->GetOperState())  
+                state = pTitel->GetOperState()->GetState();
+            else
+                state = 0;
+        }
+        iHelpState = state % 256;
+        iHelpBrightness = state / 256;
+        if(iHelpState)
+            iState = 1;
+        if(iHelpBrightness > iBrightness) 
+            iBrightness = iHelpBrightness;
+        if(i)
+            iNiv4++;
+        else
+            iNiv3++;
+    }
+    return(iBrightness*256 + iState);
+}
+
+void CBrowserSocket::ActivateSammelSchalter(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int iState)
+{   
+    int i;
+    class CBrowserEntity *pTitel;
+
+    if(iNiv3)
+    {
+        iNiv4 = 1;
+        i = 1;
+    }
+    else
+    {
+        iNiv3 = 1;
+        i = 0;
+    }
+    while(true)
+    {
+        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pTitel == NULL)
+            break;
+        if(pTitel->GetSammelSchalter())
+            ActivateSammelSchalter(iNiv1, iNiv2, iNiv3, iNiv4, iState);
+        else
+        {   if(pTitel->GetOperChange() != NULL)
+                pTitel->GetOperChange()->SetState(iState);
+        }
+        if(i)
+            iNiv4++;
+        else
+            iNiv3++;
+    }
+}
 //
 //  2_x_y_z;type
 //

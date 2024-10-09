@@ -57,7 +57,9 @@ protected:
     void VerwaltWS(int iNiv1, int iNiv2, int iNiv3, int iNiv4);
     void VerwaltSensor(int iNiv1, int iNiv2, int iNiv3, int iNiv4); 
     void VerwaltAlarmClock(int iNiv1, int iNiv2, int iNiv3, int iNiv4);   
-
+    void ActivateSammelSchalter(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int iState);
+    int GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4);
+       
 private:
     int m_iPos;
     CIOGroup * m_pIOGroup;

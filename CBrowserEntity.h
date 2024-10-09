@@ -27,31 +27,47 @@ class CBrowserEntity
 public:
     CBrowserEntity();
     void SetText(char *strPtr);
+    char * GetText();
     void SetImage(char *strPtr);
+    char * GetImage();
     class CBrowserEntity * SearchMenu(class CBrowserEntity *pMenu, int Niv1, int Niv2,
                               int Niv3, int Niv4);
     void SetNiv(int Niv1, int Niv2, int Niv3, int Niv4);
-    class CBrowserEntity * SearchGroup(int pos);
-	
-public:
-    int m_iTyp;
-        // = 1, Schalter
-        // = 2, Heizkörper
-        // = 3, Zähler
-        // = 4, Alarm
-        // = 5, Wetterstation
-        // = 6, 
-    char *m_pText;
-    bool m_bSammelSchalter;
+    CBrowserEntity * SearchGroup(int pos);
+    int GetNiv1();
+    int GetNiv2();
+    int GetNiv3();
+    int GetNiv4();
+    int GetTyp(); 
+    void SetTyp(int iTyp);
+    void SetSammelSchalter(bool bVal);
+    bool GetSammelSchalter();
+    CBrowserEntity * GetNextMenu();
+    void SetNextMenu(CBrowserEntity * pNextMenu);
+    CBerechneBase * GetOperState();
+    void SetOperState(CBerechneBase * pOperState);
+	CBerechneBase * GetOperChange();
+    void SetOperChange(CBerechneBase * pOperChange);
+private:
+    int m_iTyp; 
+    // bei der Steuerung sonst nicht gebraucht
+        // = 1, nur Text
+        // = 2, Schalter
+        // = 3, Schalter mit Schieber
+        // = 4, up/stop/down
+        // = 5, up/stop/down mit Schieber
+    int m_iNiv1; // 1=Steuerung, 2=Heizung .....
+    int m_iNiv2;
+    int m_iNiv3;
+    int m_iNiv4;    
     class CBrowserEntity *m_pNextMenu;
     class CBerechneBase *m_pOperState;  // mit getState wird der Zustand abgefragt
                                         // mit GetContent wird der Inhalt abgefragt
     class CBerechneBase *m_pOperChange; // Operant der geändert werden soll
-    char *m_pImage;
-    int m_iNiv1;
-    int m_iNiv2;
-    int m_iNiv3;
-    int m_iNiv4;
+    char *m_pImage;       
+    char *m_pText;  
+    bool m_bSammelSchalter;          
+
 };
 
 

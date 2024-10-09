@@ -1118,6 +1118,9 @@ void CIOGroup::InitGroup()
         case 151:
             str3 = "MAX not defined";
             break;
+        case 152: // Sammelschalter nicht möglich
+            str3 = "not possible";
+            break;
         default:
             str3 = "error not def.!";
             break;
@@ -3865,24 +3868,22 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                 break;
             case 1:
                 iNiv1 = m_pReadFile->ReadNumber();
-                // 1 = Steuerung, 2 = Heizung, 3 = Zähler, 4=Alarm, 5=Wetterstation, 6=Sensoren
-                // 7 = AlarmClock
                 switch(iNiv1) {
                     case 1: // Steuerung
                         break;
-                    case 2:
+                    case 2: // Heizung
                         if(m_pHeizung == NULL)
                             m_pReadFile->Error(132);
                         break;
-                    case 3:
+                    case 3: // Zähler
                         break;
-                    case 4:
+                    case 4: // Alarm
                         break;
-                    case 5:
+                    case 5: // Wetterstation
                         break;
-                    case 6:
+                    case 6: // Sensoren
                         break;
-                    case 7:
+                    case 7: // Alarmclock
                         if(m_pAlarmClock == NULL)
                             m_pAlarmClock = new CAlarmClock;
                         else
@@ -3910,7 +3911,16 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                 break;
             case 3:
                 if(iNiv2 >= 1)
+                {    
                     iNiv3++;
+                    iNiv4 = 0;
+                }
+                else
+                    m_pReadFile->Error(52);
+                break;
+            case 4:
+                if(iNiv3 >= 1)
+                    iNiv4++;
                 else
                     m_pReadFile->Error(52);
                 break;
@@ -3923,148 +3933,145 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
            pMenu->SetText(buf);
            pMenu->SetNiv(iNiv1, iNiv2, iNiv3, iNiv4);
 
-            // Wird ein Wert (Zustand oder Zahl abgefragt
+            // Wird ein Wert (Zustand oder Zahl abgefragt)
             len = m_pReadFile->ReadBuf(buf, ','); 
-            if(len >= 0)
+            if(len > 0)
             {
                 if(!iNiv2 && !iNiv3 && !iNiv4)
-                {   // Ebene 1 (1=Steuerung, 2=Heizung, 3=Zähler) 
+                {   // Ebene 1 (1=Steuerung, 2=Heizung, .....
                     // es handelt sich um einen Bild für die Navigationsbar
                     if(len)
                         pMenu->SetImage(buf);
                 }
-                else if(iNiv2 && !iNiv3 && !iNiv4)
-                {
-                    // Ebene 2
+                else if(iNiv1 == 1 && iNiv2)
+                {   // nur bearbeitet wenn Steuerung
                     type = atoi(buf);
-                    pMenu->m_iTyp = type;
-                    switch(type) {
-                        case 1: // Steuerung
-                                // es handelt sich um einen Text, mit oder ohne Bild und
-                                // Sammelschalter
-                            len = m_pReadFile->ReadBuf(buf, ',');
-                            if(len >= 0)
-                            {
-                                if(len)
-                                    pMenu->SetImage(buf);
-                                len = m_pReadFile->ReadBuf(buf, ',');
-                                if(len == 1 && strncmp(buf, "1", 1) == 0 && strlen(buf) == 1)
-                                    pMenu->m_bSammelSchalter = true;
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                else {
-                    nbr = atoi(&buf[0]);
-                    pMenu->m_iTyp = nbr;
+                    pMenu->SetTyp(type);
                     len = m_pReadFile->ReadBuf(buf, ',');
-                    if(len)
+                    if(len > 0)
                         pMenu->SetImage(buf);
-                    m_pReadFile->ReadBuf(buf, ',');
-                    switch(nbr) {
-                    case 1: // Typ 1 es handelt sich um einen Software-Schalter
-                        {
-                            if(strncmp(buf, "A", 1) == 0) // Ausgang
-                            {
-                                nbr = atoi(&buf[1]);
-                                if(nbr > 0 && nbr <= GetAusgAnz())
-                                { 
-                                    CBerechneAusg * pAusg = new CBerechneAusg;
-                                    pAusg->init(nbr, GetAusgAddress (nbr));
-                                    pMenu->m_pOperState = pAusg;
-                                }
-                                else
-                                    m_pReadFile->Error(54);
-                            }
-                            else if(strncmp(buf, "M", 1) == 0) // Merker
-                            {
-                                nbr = atoi(&buf[1]);
-                                if(nbr > 0 && nbr <= GetMerkAnz())
-                                {   
-                                    CBerechneAusg * pAusg = new CBerechneAusg; 
-                                    pAusg->init(nbr, GetMerkAddress (nbr));
-                                    pMenu->m_pOperState = pAusg;
-                                }
-                                else
-                                    m_pReadFile->Error(55);
-                            }
+                    if(type > 1)
+                    {
+                        len = m_pReadFile->ReadBuf(buf, ','); 
+                        if(len <= 0) // es ist ein Sammelschalter
+                        {   if(iNiv4)
+                                m_pReadFile->Error(152);
                             else
-                                m_pReadFile->Error(53);
-                            // soll der Wert auch geändert werden
-                            len = m_pReadFile->ReadBuf(buf, ','); 
-                            if(len)
-                            {
-                                nbr = atoi(&buf[1]);
-                                if(strncmp(buf, "S", 1) == 0)
+                                pMenu->SetSammelSchalter(true);
+                        }
+                        else 
+                        {                                     
+                            switch(type) {
+                            case 2: // Typ 1 es handelt sich um einen Software-Schalter
+                                if(strncmp(buf, "A", 1) == 0) // Ausgang
                                 {
-                                    if(nbr > 0 && nbr <= GetSEingAnz())
-                                    {
-                                        CBerechneAusg * pAusg = new CBerechneAusg; 
-                                        pAusg->init(nbr, GetSEingAddress(nbr));
-                                        pMenu->m_pOperChange = pAusg;
+                                    nbr = atoi(&buf[1]);
+                                    if(nbr > 0 && nbr <= GetAusgAnz())
+                                    { 
+                                        CBerechneAusg * pAusg = new CBerechneAusg;
+                                        pAusg->init(nbr, GetAusgAddress (nbr));
+                                        pMenu->SetOperState(pAusg);
                                     }
                                     else
-                                        m_pReadFile->Error(57);
+                                        m_pReadFile->Error(54);
+                                }
+                                else if(strncmp(buf, "M", 1) == 0) // Merker
+                                {
+                                    nbr = atoi(&buf[1]);
+                                    if(nbr > 0 && nbr <= GetMerkAnz())
+                                    {   
+                                        CBerechneAusg * pAusg = new CBerechneAusg; 
+                                        pAusg->init(nbr, GetMerkAddress (nbr));
+                                        pMenu->SetOperState(pAusg);
+                                    }
+                                    else
+                                        m_pReadFile->Error(55);
                                 }
                                 else
-                                    m_pReadFile->Error(56);
-                            }
-                        }
-                        break;
-                    case 2: // up/stop/down
-                    case 3: // Schalter und Slider
-                    case 4: // up/stop/down und Slider
-                        if(strncmp(buf, "HUE", 3) == 0) // Ausgang
-                        {
-                            nbr = atoi(&buf[3]);
-                            if(m_pHue != NULL && nbr > 0 && nbr <= m_pHue->GetAnzEntity())
-                            { 
-                                CBerechneHue * pHue = new CBerechneHue;
-                                pHue->init(m_pHue->GetAddress(nbr));
-                                pMenu->m_pOperState = pHue;
-                                
-                            }
-                            else
-                                m_pReadFile->Error(54);
-                        }
-                        else if(strncmp(buf, "SOMFY", 5) == 0)
-                        {
-                            nbr = atoi(&buf[5]);
-                            if(m_pSomfy != NULL && nbr > 0 && nbr <= m_pSomfy->GetAnzEntity())
-                            { 
-                                CBerechneSomfy * pSomfy = new CBerechneSomfy;
-                                pSomfy->init(nbr, m_pSomfy);
-                                pMenu->m_pOperState = pSomfy;
-                            }
-                            else
-                                m_pReadFile->Error(54);
-                        }
-                        else
-                            m_pReadFile->Error(53);
-                        len = m_pReadFile->ReadBuf(buf, ','); 
-                        if(len)
-                        {
-                            nbr = atoi(&buf[1]);
-                            if(strncmp(buf, "I", 1) == 0)
-                            {
-                                if(nbr > 0 && nbr <= GetIntegerAnz())
+                                    m_pReadFile->Error(53);
+                                // soll der Wert auch geändert werden
+                                len = m_pReadFile->ReadBuf(buf, ','); 
+                                if(len)
                                 {
-                                    CBerechneInteger * pBerechneInteger = new CBerechneInteger;
-                                    pBerechneInteger->init(GetIntegerAddress (nbr));
-                                    pMenu->m_pOperChange = pBerechneInteger;
+                                    nbr = atoi(&buf[1]);
+                                    if(strncmp(buf, "S", 1) == 0)
+                                    {
+                                        if(nbr > 0 && nbr <= GetSEingAnz())
+                                        {
+                                            CBerechneAusg * pAusg = new CBerechneAusg; 
+                                            pAusg->init(nbr, GetSEingAddress(nbr));
+                                            pMenu->SetOperChange(pAusg);
+                                        }
+                                        else
+                                            m_pReadFile->Error(57);
+                                    }
+                                    else
+                                        m_pReadFile->Error(56);
                                 }
-                            }
-                            else
+                                break;
+                            case 3: // up/stop/down
+                            case 4: // Schalter und Slider
+                            case 5: // up/stop/down und Slider
+                                if(strncmp(buf, "I", 1) == 0) // Integer
+                                {
+                                    if(nbr > 0 && nbr <= GetIntegerAnz())
+                                    {
+                                        CBerechneInteger * pBerechneInteger = new CBerechneInteger;
+                                        pBerechneInteger->init(GetIntegerAddress (nbr));
+                                        pMenu->SetOperState(pBerechneInteger);
+                                    }
+                                }                        
+                                else if(strncmp(buf, "HUE", 3) == 0) // Ausgang
+                                {
+                                    nbr = atoi(&buf[3]);
+                                    if(m_pHue != NULL && nbr > 0 && nbr <= m_pHue->GetAnzEntity())
+                                    { 
+                                        CBerechneHue * pHue = new CBerechneHue;
+                                        pHue->init(m_pHue->GetAddress(nbr));
+                                        pMenu->SetOperState(pHue);
+                                        
+                                    }
+                                    else
+                                        m_pReadFile->Error(54);
+                                }
+                                else if(strncmp(buf, "SOMFY", 5) == 0)
+                                {
+                                    nbr = atoi(&buf[5]);
+                                    if(m_pSomfy != NULL && nbr > 0 && nbr <= m_pSomfy->GetAnzEntity())
+                                    { 
+                                        CBerechneSomfy * pSomfy = new CBerechneSomfy;
+                                        pSomfy->init(nbr, m_pSomfy);
+                                        pMenu->SetOperState(pSomfy);
+                                    }
+                                    else
+                                        m_pReadFile->Error(54);
+                                }
+                                else
+                                    m_pReadFile->Error(53);
+                                len = m_pReadFile->ReadBuf(buf, ','); 
+                                if(len)
+                                {
+                                    nbr = atoi(&buf[1]);
+                                    if(strncmp(buf, "I", 1) == 0)
+                                    {
+                                        if(nbr > 0 && nbr <= GetIntegerAnz())
+                                        {
+                                            CBerechneInteger * pBerechneInteger = new CBerechneInteger;
+                                            pBerechneInteger->init(GetIntegerAddress (nbr));
+                                            pMenu->SetOperChange(pBerechneInteger);
+                                        }
+                                    }
+                                    else
+                                        m_pReadFile->Error(56);
+                                }
+                                else
+                                    m_pReadFile->Error(53);                                                  
+                                break;                       
+                            default:
                                 m_pReadFile->Error(56);
+                                break;
+                            }
                         }
-                        else
-                            m_pReadFile->Error(53);                                                  
-                        break;                       
-                    default:
-                        m_pReadFile->Error(56);
-                        break;
                     }
                 }
             }

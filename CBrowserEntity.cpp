@@ -37,6 +37,19 @@ CBrowserEntity::CBrowserEntity()
     m_bSammelSchalter = false;
 }
 
+int CBrowserEntity::GetTyp()
+{
+    return m_iTyp;
+}
+void CBrowserEntity::SetTyp(int iTyp)
+{
+    m_iTyp = iTyp;
+}
+
+char * CBrowserEntity::GetText()
+{
+    return m_pText;
+}
 void CBrowserEntity::SetText(char *strPtr)
 {
     char *ptr;
@@ -54,7 +67,60 @@ void CBrowserEntity::SetImage(char *strPtr)
     sprintf(ptr, strPtr);
     m_pImage = ptr;
 }
+int CBrowserEntity::GetNiv1()
+{
+    return m_iNiv1;
+}
+int CBrowserEntity::GetNiv2()
+{
+    return m_iNiv2;
+}
+int CBrowserEntity::GetNiv3()
+{
+    return m_iNiv3;
+}
+int CBrowserEntity::GetNiv4()
+{
+    return m_iNiv4;
+}
 
+char * CBrowserEntity::GetImage()
+{
+    return m_pImage;
+}
+
+void CBrowserEntity::SetSammelSchalter(bool bVal)
+{
+    m_bSammelSchalter = bVal;
+}
+bool CBrowserEntity::GetSammelSchalter()
+{
+    return m_bSammelSchalter;
+}
+class CBrowserEntity * CBrowserEntity::GetNextMenu()
+{
+    return m_pNextMenu;
+}
+void CBrowserEntity::SetNextMenu(CBrowserEntity * pNextMenu)
+{
+    m_pNextMenu = pNextMenu;
+}
+CBerechneBase * CBrowserEntity::GetOperState()
+{
+    return m_pOperState;
+}
+void CBrowserEntity::SetOperState(CBerechneBase * pOperState)
+{
+    m_pOperState = pOperState;
+}
+CBerechneBase * CBrowserEntity::GetOperChange()
+{
+    return m_pOperChange;
+}
+void CBrowserEntity::SetOperChange(CBerechneBase * pOperChange)
+{
+    m_pOperChange = pOperChange;
+}
 class CBrowserEntity * CBrowserEntity::SearchMenu(class CBrowserEntity *pMenu, int Niv1, int Niv2,
                                       int Niv3, int Niv4)
 {

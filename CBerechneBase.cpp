@@ -112,12 +112,16 @@ void CBerechneInteger::SetState(int state)
 {
     m_pInteger->SetState(state);
 }
+int CBerechneInteger::GetState()
+{
+    return m_pInteger->GetState();
+}
 //
 //  Ausgänge
 //
 void CBerechneAusg::SetState(int state)
 {
-    if(state)
+    if(state % 256)
         *m_cPtr |= m_ch;
     else
         *m_cPtr &= ~m_ch;
@@ -170,7 +174,7 @@ void CBerechneEWAusg::SetState(int state)
     struct EWAusgEntity EWAusg;
     
 	ch = *m_cPtr;
-    
+    state = state % 256;
 	// Das Telegramm wird gesendet auch wenn der Zustand bereits richtig
 	// gesetzt ist
 	switch(m_EW) {
@@ -274,6 +278,7 @@ void CBerechneEWEing::SetState(int state)
 {
     char ch;
     ch = *m_cPtr;
+    state = state % 256;
     switch(m_EW) {
     case 0x20: // CD
         if(state)

@@ -176,6 +176,7 @@ void CSomfy::Control()
                 return;   
         }
         strJson += "],\"deviceURL\":\"" + pSomfyEntity->GetstrUrl() + "\"}]}";
+        syslog(LOG_ERR, strJson.c_str());
         // URL
         curl_easy_setopt(m_pCurl, CURLOPT_URL, strBuffer.c_str()); 
 

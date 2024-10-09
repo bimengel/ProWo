@@ -133,6 +133,7 @@ class CBerechneInteger : public CBerechneBase
 public:
     void init(CInteger *pInteger);
     virtual void SetState(int state);
+    virtual int GetState();
 protected:
     CInteger *m_pInteger;
 };

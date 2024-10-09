@@ -29,7 +29,7 @@ void CBrowserMenu::InsertEntity(CBrowserEntity *pBrowserEntity)
 {
     CBrowserEntity *pMenu;
     
-    if(!pBrowserEntity->m_iNiv2 && !pBrowserEntity->m_iNiv3  && !pBrowserEntity->m_iNiv4)
+    if(!pBrowserEntity->GetNiv2() && !pBrowserEntity->GetNiv3()  && !pBrowserEntity->GetNiv4())
     {
         m_iGroupIdx++;
         m_pGroup[m_iGroupIdx] = pBrowserEntity;
@@ -37,9 +37,9 @@ void CBrowserMenu::InsertEntity(CBrowserEntity *pBrowserEntity)
     else
     {
         pMenu = m_pGroup[m_iGroupIdx];
-        while(pMenu->m_pNextMenu != NULL)
-            pMenu = pMenu->m_pNextMenu;
-        pMenu->m_pNextMenu = pBrowserEntity;
+        while(pMenu->GetNextMenu() != NULL)
+            pMenu = pMenu->GetNextMenu();
+        pMenu->SetNextMenu(pBrowserEntity);
     }
     
 }
@@ -61,7 +61,7 @@ class CBrowserEntity * CBrowserMenu::SearchTitel(int iNiv1, int iNiv2, int iNiv3
     
     for(i=1; i < m_iAnzGroup; i++)
     {
-        if(m_pGroup[i]->m_iNiv1 == iNiv1)
+        if(m_pGroup[i]->GetNiv1() == iNiv1)
         {
             pBrowserEntity = m_pGroup[i];
             break;
@@ -71,10 +71,10 @@ class CBrowserEntity * CBrowserMenu::SearchTitel(int iNiv1, int iNiv2, int iNiv3
         pBrowserEntity = NULL;
     else
     {
-        for(; pBrowserEntity != NULL; pBrowserEntity = pBrowserEntity->m_pNextMenu)
+        for(; pBrowserEntity != NULL; pBrowserEntity = pBrowserEntity->GetNextMenu())
         {
-            if(iNiv1 == pBrowserEntity->m_iNiv1 && iNiv2 == pBrowserEntity->m_iNiv2 &&
-                            iNiv3 == pBrowserEntity->m_iNiv3 && iNiv4 == pBrowserEntity->m_iNiv4)
+            if(iNiv1 == pBrowserEntity->GetNiv1() && iNiv2 == pBrowserEntity->GetNiv2() &&
+                            iNiv3 == pBrowserEntity->GetNiv3() && iNiv4 == pBrowserEntity->GetNiv4())
                 break;
 
         }
