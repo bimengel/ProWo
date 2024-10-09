@@ -391,9 +391,7 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         {   iCase = 4;
             iNiv4 = 1;
         }
-        bFirst = true;
-        str = "{\"type\":1,\"list\":[ ";
-        Send(str.c_str());            
+        bFirst = true;           
         while(bContinue)
         {
             pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
@@ -401,9 +399,11 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                 bContinue = false;
             else
             {   
-                str = "";
                 if(bFirst) 
+                {   
+                    str = "{\"type\":1,\"list\":[";
                     bFirst = false;
+                }
                 else 
                     str = ",";
                 str += "{\"id\":\"" + to_string(iNiv1)
@@ -457,7 +457,10 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                 }
             }
         }
-        str = "]}";
+        if(bFirst)
+            str = "{\"type\":2}";
+        else
+            str = "]}";
         Send(str.c_str());        
     }
     else if(buf[0] == '2') 

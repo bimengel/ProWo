@@ -670,7 +670,7 @@ void CConfigCalculator::number()
         }
         else if(strncmp(text, "SMS", 3) == 0 && strlen(text) == 3)
         {
-            if(m_pIOGroup->m_pGSM == NULL)
+            if(m_pIOGroup->m_pGsm == NULL)
                 m_pReadFile->Error(67);
             if(nr < 1 || nr > m_pIOGroup->m_pGsm->GetAnzSMSEmpf())
                 m_pReadFile->Error(65); // unknown counter            
