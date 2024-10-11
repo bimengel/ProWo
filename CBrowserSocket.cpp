@@ -420,6 +420,15 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                 Send(str.c_str());
                 str = "\"prowotype\":" + to_string(pTitel->GetTyp()) + ",";
                 Send(str.c_str());
+                switch(pTitel->GetTyp()) {
+                    case 3: // Schalter mit Schieber
+                    case 5: // usd mit Schieber
+                        str = "\"max\":" + to_string(pTitel->GetOperState()->GetMax()) + ",";
+                        Send(str.c_str());
+                        break;
+                    default:
+                        break;
+                }
                 str ="\"status\":";
                 switch(pTitel->GetTyp()) {
                 case 1:

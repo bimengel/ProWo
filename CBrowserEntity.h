@@ -66,7 +66,7 @@ private:
     class CBerechneBase *m_pOperChange; // Operant der geändert werden soll
     char *m_pImage;       
     char *m_pText;  
-    bool m_bSammelSchalter;          
+    bool m_bSammelSchalter;       
 
 };
 
