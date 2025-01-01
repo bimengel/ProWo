@@ -64,13 +64,13 @@ int main(int argc, char *argv[])
     long lDelay;
     string str;
     
-#ifdef DEBUG 
+// #ifdef DEBUG 
     static char path[] = "/home/pi/";
     j = strlen(path);
     pProgramPath = new char[j+1];
     strcpy(pProgramPath, path);
-#else
-    j = strlen(argv[0]);
+//#else 
+/*   j = strlen(argv[0]);
     pProgramPath = new char[j+1];
     strcpy(pProgramPath, argv[0]);
     for( ; j > 0; j--)
@@ -85,9 +85,8 @@ int main(int argc, char *argv[])
                 break;
             }
         }
-    }
+    } */
     daemonize();
-#endif
     
     FILE * pFile;
     char text[100];
@@ -239,8 +238,8 @@ int daemonize()
     char str[20];
 
     // Create a new process
-    pid = fork();
-    if(pid == -1)
+/*    pid = fork();
+    if(pid < 0)
     {   
         syslog(LOG_ERR, "can't create process");
         exit(EXIT_FAILURE);
@@ -267,7 +266,7 @@ int daemonize()
     // close all open files
     for(i=0; i < NR_OPEN; i++)
         close(i);
-
+*/
     // redirect fd's 0,1,2 to /dev/null
     open("/dev/null", O_RDWR);  // 0 = stdin
     dup(0);						// 1 = stdout

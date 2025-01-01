@@ -51,7 +51,7 @@ public:
 	int Init(int baudrate, int bits, int stops, char parity); 
 	void SetAddr(int Inh1, int Addr2, int Inh2, int Addr3, int Reg);
 	void SendLen(unsigned char *ptrSend, int lenSend);
-	int ReadLen(unsigned char *ptr, int iPos);
+	int ReadLen(unsigned char *ptr, int *iPos);
 	void ResetGSM(int state);
 	bool ReadState();
 	
@@ -114,9 +114,11 @@ private:
     string m_strSMSCommand;
     string m_strPin;
     int m_iError; 		// =0 kein Fehler
-						// =1 nach einer Stunde oder bei Sendeversuch mit AT-Kommando versuchen
-						// =2 nach einer Stunde oder bei Sendeversuch Hardware-Reset
-    
+						// =1 nach einer Minute mit AT-Kommando versuchen
+						// =2 nach einer Stunde Hardware-Reset
+    int m_iRepeat;
+	int m_iLastSend;
+	bool m_bFirst;
     pthread_mutex_t m_mutexGsmSendFifo;	
 };
 

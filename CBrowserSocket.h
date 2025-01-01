@@ -58,7 +58,7 @@ protected:
     void VerwaltSensor(int iNiv1, int iNiv2, int iNiv3, int iNiv4); 
     void VerwaltAlarmClock(int iNiv1, int iNiv2, int iNiv3, int iNiv4);   
     void ActivateSammelSchalter(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int iState);
-    int GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4);
+    int GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int *iMax);
        
 private:
     int m_iPos;

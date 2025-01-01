@@ -372,7 +372,7 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
     class CBrowserEntity menu;
     class CBrowserEntity *pTitel;
     class CBrowserEntity *pMenu;
-    int iLen, iCase, iState;
+    int iLen, iCase, iState, iMax;
     bool bFirst, bContinue = true;
     string str;
   
@@ -420,36 +420,38 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                 Send(str.c_str());
                 str = "\"prowotype\":" + to_string(pTitel->GetTyp()) + ",";
                 Send(str.c_str());
-                switch(pTitel->GetTyp()) {
-                    case 3: // Schalter mit Schieber
-                    case 5: // usd mit Schieber
-                        str = "\"max\":" + to_string(pTitel->GetOperState()->GetMax()) + ",";
-                        Send(str.c_str());
-                        break;
-                    default:
-                        break;
-                }
                 str ="\"status\":";
                 switch(pTitel->GetTyp()) {
                 case 1:
-                    str += "\"not\"}"; 
+                    str += "\"not\""; 
                     break;
                 case 2:
                 case 3:
                 case 4:
                 case 5:
                     if(pTitel->GetSammelSchalter())
-                    {   iState = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4);
-                        str += to_string(iState) + "}";
-                    }
+                        iState = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4, &iMax);
                     else
-                        str += to_string(pTitel->GetOperState()->GetState()) + "}";
+                        iState = pTitel->GetOperState()->GetState();
+                    str += to_string(iState);
                     break;                
                 default: 
-                    str += "\"not\"}";   
+                    str += "\"not\"";   
                     break;
                 }                 
-                Send(str.c_str());                
+                Send(str.c_str()); 
+                switch(pTitel->GetTyp()) {
+                    case 3: // Schalter mit Schieber
+                    case 5: // usd mit Schieber
+                        if(!pTitel->GetSammelSchalter())
+                            iMax = pTitel->GetOperState()->GetMax();
+                        str = ",\"max\":" + to_string(iMax) + "}";
+                        break;
+                    default:
+                        str = "}";
+                        break;
+                }
+                Send(str.c_str());                               
                 switch(iCase){
                 case 2:
                     iNiv2++;
@@ -502,13 +504,16 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
 
 }
 
-int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
+
+int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int *iMax)
 {
-    int iState, iBrightness, iHelpState, iHelpBrightness, state, i;
+    int iState, iBrightness, iHelpState, iHelpBrightness, iHelpMax, state, i;
     class CBrowserEntity *pTitel;
 
     iState = 0;
     iBrightness = 0;
+    iHelpMax = 0;
+
     if(iNiv3)
     {   iNiv4 = 1;
         i = 1;
@@ -524,11 +529,16 @@ int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int 
         if(pTitel == NULL)
             break;
         if(pTitel->GetSammelSchalter())
-            state = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4);
+            state = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4, iMax);
         else
         {
             if(pTitel->GetOperState())  
+            {   
                 state = pTitel->GetOperState()->GetState();
+                iHelpMax = pTitel->GetOperState()->GetMax();
+                if(iHelpMax > *iMax)
+                    *iMax = iHelpMax;
+            }
             else
                 state = 0;
         }

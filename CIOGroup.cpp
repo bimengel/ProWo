@@ -3962,7 +3962,7 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                         else 
                         {                                     
                             switch(type) {
-                            case 2: // Typ 1 es handelt sich um einen Software-Schalter
+                            case 2: // Typ 2 es handelt sich um einen Software-Schalter
                                 if(strncmp(buf, "A", 1) == 0) // Ausgang
                                 {
                                     nbr = atoi(&buf[1]);
