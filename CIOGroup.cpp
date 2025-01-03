@@ -3078,10 +3078,7 @@ int CIOGroup::EW_Received(int board)
                 channel = ret / 256;
                 button = ret % 256; 
                 if(channel > 31 || channel < 0)
-                {   sprintf(text, "Button released 0 < channel > 31 %d", channel);
-                    syslog(LOG_INFO, text);
                     channel = 0;
-                }
                 if(button > 3 || button < 0)
                 {   sprintf(text, "Released button 0 < number > 3 %d", button);
                     syslog(LOG_INFO, text);

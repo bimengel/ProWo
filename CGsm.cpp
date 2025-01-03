@@ -70,8 +70,9 @@ ProWo is free software: you can redistribute it and/or modify it
 #define GSMDELETEALLSMS			25	
 #define GSMEXTENDEDERRORCODE    26
 
-#define GSMSENDSMS              30
-#define GSMGETSMS               31
+#define GSMSENDGSMNR            30
+#define GSMSENDSMSTEXT          31
+#define GSMGETSMS               32
 
 
 //
@@ -110,6 +111,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
             m_strSMSCommand.clear();
 			m_iTimeOut = 0;
             m_iAnzTimeOut = 0;
+            m_iAnzTimeOutCREG = 0;
             m_bFirst = true;
 			break;
 		case GSMWAITSTATE:
@@ -147,8 +149,8 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 		case GSMRESET:
 			// AT senden und auf OK warten
             m_iEmpf = 0;
-            m_pUartI2C->ReadLen (m_chEmpf, &m_iEmpf);
-			iSend = sprintf((char *)m_chSend, "AT");
+            m_pUartI2C->ReadLen (m_chEmpf, m_iEmpf);
+			iSend = sprintf((char *)m_chSend, "AT+CFUN=1");
 			m_iSubState = GSMSENDAT;
 			m_iState = GSMWAITANSWER;
 			break;
@@ -160,13 +162,21 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 		}
 		break;     
 	case  GSMWAITANSWER:      
-        if(m_pUartI2C->ReadLen (m_chEmpf, &m_iEmpf))
+        m_iEmpf = m_pUartI2C->ReadLen (m_chEmpf, m_iEmpf);
+        if(m_iEmpf)
         {
             if(SearchString((char *)m_chEmpf, (char *)"ERROR", m_iEmpf))       
             {
+                if(SearchString((char *)m_chEmpf, (char *)"+CME ERROR: unknown", m_iEmpf))
+                {   // unbekannter Fehler
+                    strHelp.assign((char *)m_chEmpf, m_iEmpf);
+                    strHelp = "ProWo Info: " + strHelp;
+                    syslog(LOG_INFO, strHelp.c_str());
+                    break;
+                }
                 m_strError = string((char *)m_chEmpf, m_iEmpf);
                 syslog(LOG_ERR, m_strError.c_str());
-                if(m_iSubState == GSMSENDSMS)
+                if(m_iSubState == GSMSENDSMSTEXT || m_iSubState == GSMSENDGSMNR)
                 {
                     // falsche Handynummer oder Text, aus der Fifo-queue entfernen
                     pthread_mutex_lock(&m_mutexGsmSendFifo);                   
@@ -177,8 +187,9 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                 m_iSubState = GSMNOTDEFINED;
                 m_iError = 2;                
             }             
-            if(SearchString((char *)m_chEmpf, (char *)"OK", m_iEmpf))// || m_chEmpf[0] == '>')
+            if(SearchString((char *)m_chEmpf, (char *)"OK", m_iEmpf) || m_chEmpf[0] == '>')
             {
+                m_iAnzTimeOut = 0;
                 switch(m_iSubState) {
                 case GSMSENDAT:
                     // Get Factory settings
@@ -269,7 +280,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                                 break;
                             case 2: // searching
                                 m_iTimeOut = 0;
-                                if(m_iAnzTimeOut++ > 10)
+                                if(m_iAnzTimeOutCREG++ > 10)
                                     strHelp = "GSM waiting registration time out (3min)";
                                 else
                                     m_iState = GSMWAITREGISTER;
@@ -340,7 +351,13 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                     m_strError.clear();
                     m_iError = 0;
                     break;
-                case GSMSENDSMS: // SMS ist versendet worden
+                case GSMSENDGSMNR:
+                    iSend = sprintf((char *)m_chSend, "%s", 
+                                        m_pSendSMS->m_strSMSText.c_str());               
+                    m_chSend[iSend++] = 0x1A;
+                    m_iSubState = GSMSENDSMSTEXT;
+                    break;
+                case GSMSENDSMSTEXT: // SMS ist versendet worden
                     m_pSendSMS = NULL;
                     pthread_mutex_lock(&m_mutexGsmSendFifo);                 
                     m_SendFifo.pop();
@@ -384,9 +401,10 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                 m_iState = GSMNOTDEFINED;               
             }
             // es wird auf Antwort gewartet aber keine empfangen 
-            // die Timeoutzeit beträgt 300 sekunden 
-            if(m_iTimeOut++ > 300000/iZykluszeit)
+            // die Timeoutzeit beträgt 3 Minuten
+            if(m_iTimeOut++ > 180000/iZykluszeit)
             {
+                m_iAnzTimeOut++;
                 m_iState = GSMERROR;
                 m_iSubState = GSMERROR;
                 m_iError = 1;
@@ -395,8 +413,9 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
             }
         }            
         else
-        {   if(m_iTimeOut++ > 300000/iZykluszeit)
+        {   if(m_iTimeOut++ > 180000/iZykluszeit) // 3 Minuten
             {
+                m_iAnzTimeOut++;
                 m_iState = GSMERROR;
                 m_iSubState = GSMERROR;
                 m_iError = 1;
@@ -429,7 +448,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
 			if(!m_SendFifo.empty())
 			{
 				m_pSendSMS = &m_SendFifo.front();
-				m_iSubState = GSMSENDSMS;
+				m_iSubState = GSMSENDGSMNR;
                 m_iState = GSMWAITANSWER;
 				iSend = sprintf((char *)m_chSend, "AT+CMGS=\"%s\",", 
 		            					m_pSendSMS->m_strGSM.c_str());
@@ -437,9 +456,7 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
                     iSend += sprintf((char *)&m_chSend[iSend], "145");
                 else
                     iSend += sprintf((char *)&m_chSend[iSend], "129"); 
-                iSend += sprintf((char *)&m_chSend[iSend], "\r");
-                iSend += sprintf((char *)&m_chSend[iSend], "%s", m_pSendSMS->m_strSMSText.c_str());               
-                m_chSend[iSend++] = 0x1A;                
+                iSend += sprintf((char *)&m_chSend[iSend], "\r");                
 			}
             pthread_mutex_unlock(&m_mutexGsmSendFifo);             
 		}
@@ -449,8 +466,16 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
         {   
             switch(m_iError) {
             case 1: // leichter Fehler mit AT-Kommando starten
-                m_iState = GSMNOTDEFINED;
-                m_iSubState = GSMRESET; 
+                if(m_iAnzTimeOut > 2)
+                {   
+                    m_iState = GSMNOTDEFINED;
+                    m_iSubState = GSMNOTDEFINED; 
+                }
+                else
+                {
+                    m_iState = GSMNOTDEFINED;
+                    m_iSubState = GSMRESET; 
+                }                
                 break;
             case 2: // Verbindung ist ok, wird aber ein Fehler gemeldet
                     // CMS oder CME ERROR
@@ -617,12 +642,14 @@ void CGsm::Send(int iLen)
                 break;
         }
     }
-    m_chSend[j++] = 0x0D;
-    m_chSend[j++] = 0x0A;
+    if(m_chSend[j-1] != 0x0D && m_chSend[j-1] != 0x1A) // nach dem Senden der SMS-Nummer und des Textes
+    {
+        m_chSend[j++] = 0x0D;
+        m_chSend[j++] = 0x0A;
+    }
     m_iEmpf = 0;
     m_pUartI2C->SendLen(m_chSend, j);
-//    if(j > 4) 1.1.25
-        m_iTimeOut = 0;  
+    m_iTimeOut = 0;  
 }
 
 int CGsm::InsertSMS(int iNr, int iText)
@@ -926,13 +953,13 @@ CSMSEmpf * CGsm::GetAddressSMSEmpf(int nr)
 //
 //  UART - Schnittstelle am I2C-Bus mit dem Breakout-board SC16IS750
 //
-int CUartI2C::ReadLen(unsigned char *ptr, int *iPos)
+int CUartI2C::ReadLen(unsigned char *ptr, int iPos)
 {
 	int ch;
-    int iRet = 0;
+
     string str;
 	m_pBoardAddr->setI2C_gpio();
-	for(; *iPos < MAXGSM-1; )
+	for(; iPos < MAXGSM-1; )
 	{   
 		ch = BSC_ReadReg (1, m_pBoardAddr->Addr3, LSR) & 0x9F; 
 		if(!ch)
@@ -940,27 +967,22 @@ int CUartI2C::ReadLen(unsigned char *ptr, int *iPos)
 		else // Zeichen empfangen (!! mit oder ohne Fehler !!)
 		{	if(ch & 0x8E)
                 continue;
-            *(ptr + *iPos) = (unsigned char)BSC_ReadReg (1, m_pBoardAddr->Addr3, RHR);
-			if(*(ptr+*iPos) != 0x0D && *(ptr+*iPos) != 0x0A)
+            *(ptr + iPos) = (unsigned char)BSC_ReadReg (1, m_pBoardAddr->Addr3, RHR);
+			if(*(ptr+iPos) != 0x0D && *(ptr+iPos) != 0x0A)
             {
-                if(!isascii(*(ptr + *iPos)))
-                    *(ptr + *iPos) = '@';
-                *iPos = *iPos + 1;
-            }
-            else if(*(ptr+*iPos) == 0x0A)
-            {
-                iRet = *iPos;
-                break;
+                if(!isascii(*(ptr + iPos)))
+                    *(ptr + iPos) = '@';
+                iPos++;
             }
 		} 
 	}
-	*(ptr + *iPos) = 0;
-    if(iRet)
+	*(ptr + iPos) = 0;
+    if(iPos)
     {
-        str = "Empfang: " + string((char *)ptr, iRet);
+        str = "Empfang: " + string((char *)ptr, iPos);
         syslog(LOG_INFO, str.c_str());
     }
-	return iRet;
+	return iPos;
 }
 
 void CUartI2C::SendLen(unsigned char *ptr, int len)

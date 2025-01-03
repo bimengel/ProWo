@@ -51,7 +51,7 @@ public:
 	int Init(int baudrate, int bits, int stops, char parity); 
 	void SetAddr(int Inh1, int Addr2, int Inh2, int Addr3, int Reg);
 	void SendLen(unsigned char *ptrSend, int lenSend);
-	int ReadLen(unsigned char *ptr, int *iPos);
+	int ReadLen(unsigned char *ptr, int iPos);
 	void ResetGSM(int state);
 	bool ReadState();
 	
@@ -98,7 +98,8 @@ private:
 	int m_iSubState;
 	int m_iEmpf;
 	int m_iTimeOut;
-    int m_iAnzTimeOut;
+	int m_iAnzTimeOut;
+    int m_iAnzTimeOutCREG;
 	unsigned char m_chSend[MAXGSM];
 	unsigned char m_chEmpf[MAXGSM];
 	CUartI2C *m_pUartI2C;
