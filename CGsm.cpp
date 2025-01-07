@@ -167,13 +167,6 @@ bool CGsm::Control(int iZykluszeit, bool bStundenTakt, bool bMinutenTakt)
         {
             if(SearchString((char *)m_chEmpf, (char *)"ERROR", m_iEmpf))       
             {
-                if(SearchString((char *)m_chEmpf, (char *)"+CME ERROR: unknown", m_iEmpf))
-                {   // unbekannter Fehler
-                    strHelp.assign((char *)m_chEmpf, m_iEmpf);
-                    strHelp = "ProWo Info: " + strHelp;
-                    syslog(LOG_INFO, strHelp.c_str());
-                    break;
-                }
                 m_strError = string((char *)m_chEmpf, m_iEmpf);
                 syslog(LOG_ERR, m_strError.c_str());
                 if(m_iSubState == GSMSENDSMSTEXT || m_iSubState == GSMSENDGSMNR)
@@ -531,7 +524,8 @@ bool CGsm::GetSMS()
     int i, iLen, iPos, iEmpf;
     bool bTrue = true;
     bool bRet = false;              
-    
+    string str;
+
     if(m_iEmpf > 2)
     {    
         iEmpf = m_iEmpf;
@@ -564,6 +558,7 @@ bool CGsm::GetSMS()
                     {
                         m_chEmpf[iPos+iLen] = 0;
                         m_strSMSCommand = string((const char *)&m_chEmpf[iPos]);
+                        m_bIsLastSMS = true;
                         if(m_pSMSEmpf != NULL)
                         {
                             for(i=0; i < GetAnzSMSEmpf(); i++)
@@ -575,8 +570,8 @@ bool CGsm::GetSMS()
                                 }
                             }
                         }
-                        m_strSMSCommand = "ProWo Received SMS: " + m_strSMSCommand;
-                        syslog(LOG_INFO, m_strSMSCommand.c_str());
+                        str = "ProWo Received SMS: " + m_strSMSCommand;
+                        syslog(LOG_INFO, str.c_str());
                     } 
                     iPos += iLen;
                 }
@@ -683,6 +678,7 @@ CGsm::CGsm()
     m_iError = 0;
     m_iRepeat = 0;
     m_bFirst = true;
+    m_bIsLastSMS = false;
     pthread_mutex_init(&m_mutexGsmSendFifo, NULL);  
 }
 
@@ -936,7 +932,17 @@ string CGsm::GetErrorString()
     }
 	return noError;
 }
+string CGsm::GetLastSMS()
+{
+    return m_strSMSCommand;
+}
 
+int CGsm::IsLastSMS()
+{
+    int i = (int) m_bIsLastSMS;
+    m_bIsLastSMS = false;
+    return i;
+}
 int CGsm::GetAnzSMSEmpf()
 {
     return m_iAnzSMSEmpf;
@@ -955,8 +961,9 @@ CSMSEmpf * CGsm::GetAddressSMSEmpf(int nr)
 //
 int CUartI2C::ReadLen(unsigned char *ptr, int iPos)
 {
-	int ch;
+	int ch, iPosOrg;
 
+    iPosOrg = iPos;
     string str;
 	m_pBoardAddr->setI2C_gpio();
 	for(; iPos < MAXGSM-1; )
@@ -977,7 +984,7 @@ int CUartI2C::ReadLen(unsigned char *ptr, int iPos)
 		} 
 	}
 	*(ptr + iPos) = 0;
-    if(iPos)
+    if(iPos != iPosOrg)
     {
         str = "Empfang: " + string((char *)ptr, iPos);
         syslog(LOG_INFO, str.c_str());
@@ -1322,6 +1329,9 @@ string COperGsm::resultString()
         case 1: // Error
             str = m_pGsm->GetErrorString();
             break;
+        case 2: // letzte SMS
+            str = m_pGsm->GetLastSMS();
+            break;        
         default:
             str = "";
             break;
@@ -1330,5 +1340,18 @@ string COperGsm::resultString()
 }
 int COperGsm::resultInt()
 {
-    return m_pGsm->GetError();
+    int iRet;
+
+    switch(m_iFct) {
+        case 1:
+            iRet = m_pGsm->GetError();
+            break;
+        case 2:
+            iRet = m_pGsm->IsLastSMS();
+            break;
+        default:
+            iRet = 0;
+            break;
+    }
+    return iRet;
 }

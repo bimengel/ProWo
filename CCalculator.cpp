@@ -782,6 +782,8 @@ void CConfigCalculator::number()
                     }
                     if(strncmp(text, "ERROR", 5) == 0 && strlen(text) == 5) 
                         i = 1;
+                    else if(strncmp(text, "LASTSMS", 7) == 0 && strlen(text) == 7)
+                        i = 2;
                     else
                         m_pReadFile->Error(100);   
 

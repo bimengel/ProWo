@@ -1769,8 +1769,9 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
             else if((strncmp(buf, "HUELIGHT", 8) == 0 && strlen(buf) == 8)
                     || (strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8))
                 m_iMaxAnzHueEntity++;
-            else if(strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13
-                    || (strncmp(buf, "SOMFYMARKISE", 12) == 0 && strlen(buf) == 12))
+            else if((strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13)
+                    || (strncmp(buf, "SOMFYMARKISE", 12) == 0 && strlen(buf) == 12)
+                    || (strncmp(buf, "SOMFYWINDOW", 11) == 0 && strlen(buf) == 11))
                 m_iMaxAnzSomfyEntity++;
         }
         else
@@ -2079,7 +2080,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }  
-            else if(strncmp(buf, "TH1LEDOFF", 6) == 0 && strlen(buf) == 6)
+            else if(strncmp(buf, "TH1LEDOFF", 9) == 0 && strlen(buf) == 9)
             {
                 if(m_iAnzSensor)
                     m_pReadFile->Error(124); // define bef. Sensor
@@ -2421,6 +2422,22 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(151);                
                 iMax = m_pReadFile->ReadZahl();
                 error = m_pSomfy->SetEntity(2, iMax, str);
+                if(error)
+                    m_pReadFile->Error(error);               
+            }
+            else if(strncmp(buf, "SOMFYWINDOW", 11) == 0 & strlen(buf) == 11)
+            {
+                if(m_pSomfy == NULL)
+                    error = 150;
+                else
+                    error = m_pSomfy->IsDefined();
+                if(error)
+                    m_pReadFile->Error(error);
+                str = m_pReadFile->ReadText(';');
+                if(!m_pReadFile->ReadSeparator())
+                    m_pReadFile->Error(151);                
+                iMax = m_pReadFile->ReadZahl();
+                error = m_pSomfy->SetEntity(3, iMax, str);
                 if(error)
                     m_pReadFile->Error(error);               
             }
@@ -4011,12 +4028,15 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                             case 5: // up/stop/down und Slider
                                 if(strncmp(buf, "I", 1) == 0) // Integer
                                 {
+                                    nbr = atoi(&buf[1]);
                                     if(nbr > 0 && nbr <= GetIntegerAnz())
                                     {
                                         CBerechneInteger * pBerechneInteger = new CBerechneInteger;
                                         pBerechneInteger->init(GetIntegerAddress (nbr));
                                         pMenu->SetOperState(pBerechneInteger);
                                     }
+                                    else
+                                        m_pReadFile->Error(131);
                                 }                        
                                 else if(strncmp(buf, "HUE", 3) == 0) // Ausgang
                                 {
@@ -4057,6 +4077,8 @@ void CIOGroup::LesBrowserMenu(char *pProgramPath)
                                             pBerechneInteger->init(GetIntegerAddress (nbr));
                                             pMenu->SetOperChange(pBerechneInteger);
                                         }
+                                        else
+                                            m_pReadFile->Error(131);
                                     }
                                     else
                                         m_pReadFile->Error(56);

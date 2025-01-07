@@ -84,6 +84,8 @@ public:
 	string GetRegistered();
 	string GetProvider();
 	string GetErrorString();
+	string GetLastSMS();
+	int IsLastSMS();
 	int GetError(); // 0 oder 1 je ob ein Fehler vorhanden ist oder nicht
     int GetAnzSMSEmpf();
 	bool GetSMS();
@@ -113,6 +115,7 @@ private:
 	string m_strProvider;  // wenn registriert, Name des Providers
 	string m_strError;	 // NULL oder die letzte Fehlermeldung
     string m_strSMSCommand;
+	bool m_bIsLastSMS;	// true wenn ein SMS empfangen und nicht abgefragt wurde;
     string m_strPin;
     int m_iError; 		// =0 kein Fehler
 						// =1 nach einer Minute mit AT-Kommando versuchen

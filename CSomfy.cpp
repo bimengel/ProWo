@@ -170,7 +170,20 @@ void CSomfy::Control()
                     strJson += "\"down\"}";
                 else
                     strJson += "\"up\"}";
-                break;           
+                break;  
+            case 3: // Velux Dachfenster
+                switch(SomfyProperty.m_iState) {
+                case 0:
+                    strJson += "\"close\"}";
+                    break;
+                case 1:
+                    strJson += "\"open\"}";
+                    break;
+                default:
+                    strJson += "\"stop\"}";
+                    break;
+                }         
+                break;
             default:
                 syslog(LOG_ERR, "Somfy: undefined typ");
                 return;   
