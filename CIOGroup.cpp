@@ -1121,6 +1121,9 @@ void CIOGroup::InitGroup()
         case 152: // Sammelschalter nicht möglich
             str3 = "not possible";
             break;
+        case 153: // TEST 2x definiert 
+            str3 = "TEST two times";
+            break;
         default:
             str3 = "error not def.!";
             break;
@@ -1922,11 +1925,15 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 case 2:  // Zähler
                 case 3:  // Wetterstation
                 case 4:  // Sonosparameter schreiben
-                case 5: // Alle Ausgänge nacheinander ansteuern
+                case 5:  // Alle Ausgänge nacheinander ansteuern
+                case 6:  // die GSM Kommunikation wird in /var/log/syslog geschrieben
                 case 10: // I2C
                 case 11: // wird ein EingAusg-Modul nicht gefunden, wird diese
                          // kontinuierlich angesteuert (ohne spezielle Anzeige)
-                    m_iTest = pos;
+                    if(m_iTest)
+                        m_pReadFile->Error(153);
+                    else
+                        m_iTest = pos;
                     break;
                 default:
                     m_pReadFile->Error(79);

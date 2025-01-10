@@ -50,8 +50,8 @@ public:
 	~CUartI2C();
 	int Init(int baudrate, int bits, int stops, char parity); 
 	void SetAddr(int Inh1, int Addr2, int Inh2, int Addr3, int Reg);
-	void SendLen(unsigned char *ptrSend, int lenSend);
-	int ReadLen(unsigned char *ptr, int iPos);
+	void SendLen(unsigned char *ptrSend, int lenSend, bool bTest);
+	int ReadLen(unsigned char *ptr, int iPos, bool bTest);
 	void ResetGSM(int state);
 	bool ReadState();
 	
@@ -123,6 +123,7 @@ private:
     int m_iRepeat;
 	int m_iLastSend;
 	bool m_bFirst;
+	bool m_bTest;		// wenn true wird die Kommunikation mit dem GSM-Modul in syslog geschrieben
     pthread_mutex_t m_mutexGsmSendFifo;	
 };
 
