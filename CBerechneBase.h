@@ -30,6 +30,7 @@ struct EWAusgEntity
 //      - GetState() : Browsermenu zum Lesen des Zustandes 
 //      - SetState() : zum Ändern des Zustandes z.B Inkrement S0-Zähler
 //      - GesString() : Gibt im Stringformat den Wert des ersten COperBase zurück
+//      - eval: zum Berechnen von der in m_pOperBase gespeicherten Gleichung
 class CBerechneBase
 {
 public:
@@ -41,10 +42,12 @@ public:
     virtual int GetState(){ return 0;};
     virtual void SetState(int state){}; 
     virtual int GetMax() { return 0;};
+    int GetTyp();
     string GetString();
 	
 protected:
-    int m_nr;
+    int m_nr;       // wird gebraucht in SetState bei Easywave
+    int m_iTyp;     // gebraucht bei SetState, ist 1 bei HUE und 2 bei Somfy
     int m_IfElse; // 0=immer 1=wenn true, 2=wenn false
     COperBase **m_pOperBase;
 };

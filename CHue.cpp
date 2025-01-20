@@ -358,13 +358,17 @@ COperHue::COperHue()
 
 int COperHue::resultInt()
 {
-    return m_pHueEntity->GetState();
+    return (m_pHueEntity->GetState() % 256);
 }
 void COperHue::setOper(CHueEntity* ptr)
 {
     m_pHueEntity = ptr;
 }
 
+CBerechneHue::CBerechneHue()
+{
+    m_iTyp = 1;
+}
 void CBerechneHue::SetState(int state)
 {
     m_pHueEntity->SetState(state);

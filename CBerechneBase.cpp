@@ -29,6 +29,7 @@ CBerechneBase::CBerechneBase()
     m_pOperBase = NULL;
     m_IfElse = 0;
     m_nr = 0;
+    m_iTyp = 0;
 }
 
 int CBerechneBase::eval()
@@ -53,7 +54,10 @@ string CBerechneBase::GetString()
 {
     return m_pOperBase[0]->resultString();
 }
-
+int CBerechneBase::GetTyp()
+{
+    return m_iTyp;
+}
 //
 //  write : Anzeige von Resultaten
 void CBerechneWrite::init(CReadFile *pReadFile, void *pIOGroup)
@@ -69,6 +73,7 @@ void CBerechneWrite::SetState(int iWert)
     str = m_FormatText.GetString();
     syslog(LOG_INFO, str.c_str());
 }
+
 
 //
 // writeMessage
@@ -121,7 +126,7 @@ int CBerechneInteger::GetState()
 //
 void CBerechneAusg::SetState(int state)
 {
-    if(state % 256)
+    if(state)
         *m_cPtr |= m_ch;
     else
         *m_cPtr &= ~m_ch;
@@ -174,7 +179,7 @@ void CBerechneEWAusg::SetState(int state)
     struct EWAusgEntity EWAusg;
     
 	ch = *m_cPtr;
-    state = state % 256;
+    state = state;
 	// Das Telegramm wird gesendet auch wenn der Zustand bereits richtig
 	// gesetzt ist
 	switch(m_EW) {
@@ -278,7 +283,7 @@ void CBerechneEWEing::SetState(int state)
 {
     char ch;
     ch = *m_cPtr;
-    state = state % 256;
+    state = state;
     switch(m_EW) {
     case 0x20: // CD
         if(state)

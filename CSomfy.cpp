@@ -308,6 +308,7 @@ string CSomfyEntity::GetstrUrl()
 CBerechneSomfy::CBerechneSomfy()
 {
     m_pSomfy = NULL;
+    m_iTyp = 2;
 }
 void CBerechneSomfy::init(int nr, CSomfy *pSomfy)
 {
@@ -326,6 +327,24 @@ int CBerechneSomfy::GetMax()
 {
     return m_pSomfy->GetAddress(m_nr)->GetMax();
 }
+//
+//
+//
+COperSomfy::COperSomfy()
+{
+    m_pSomfyEntity = NULL;
+}
+
+int COperSomfy::resultInt()
+{
+    return (m_pSomfyEntity->GetState() % 256);
+}
+void COperSomfy::setOper(CSomfyEntity* ptr)
+{
+    m_pSomfyEntity = ptr;
+}
+
+
 /*  m_strUrl = "";
     for(pos = 0; pos < strUrl.length(); pos++)    
     {

@@ -990,7 +990,7 @@ int CUartI2C::ReadLen(unsigned char *ptr, int iPos, bool bTest)
             ch = BSC_ReadReg (1, m_pBoardAddr->Addr3, RHR);
 			if(ch != 0x0D && ch != 0x0A)
             {
-                if(!isascii(ch)) // Wert befindet sich zwischen 0 und 127
+                if(!isascii(ch) || ch <= 0x20) // Wert befindet sich zwischen 32 und 127
                     ch = ' ';
                 *(ptr + iPos) = ch;
                 iPos++;

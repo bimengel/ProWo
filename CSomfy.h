@@ -79,5 +79,14 @@ protected:
     CSomfy *m_pSomfy;
 };
 
+class COperSomfy : public COperBase
+{
+public:
+    COperSomfy();
+    virtual int resultInt();
+    void setOper(CSomfyEntity *ptr);
+protected:
+    CSomfyEntity * m_pSomfyEntity;
+};
 
 #endif // CSOMFY_H

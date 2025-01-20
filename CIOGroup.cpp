@@ -150,10 +150,6 @@ void CIOGroup::Control(bool bStart)
                 if(m_pWStation != NULL)
                     m_pWStation->LesenStarten();
             }
-            else if(m_iTest == 5) // Ausgänge hintereinander ansteuern
-            {
-                
-            }
         }
 
         // die Berechnung erfolgt einmal pro Minute
@@ -162,7 +158,7 @@ void CIOGroup::Control(bool bStart)
             bBerechne = true;
             bMinutenTakt = true;
 
-            if(m_iTest == 0 || m_iTest == 4) 
+            if(!(m_iTest == 1 || m_iTest == 2 || m_iTest == 3)) 
             {
                 // Wetterstation einlesen
                 if(m_pWStation != NULL)
@@ -1927,7 +1923,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 case 4:  // Sonosparameter schreiben
                 case 5:  // Alle Ausgänge nacheinander ansteuern
                 case 6:  // die GSM Kommunikation wird in /var/log/syslog geschrieben
-                case 10: // I2C
+                case 10: // I2C alle 500 msek werden alle Eingänge eingelesen
                 case 11: // wird ein EingAusg-Modul nicht gefunden, wird diese
                          // kontinuierlich angesteuert (ohne spezielle Anzeige)
                     if(m_iTest)

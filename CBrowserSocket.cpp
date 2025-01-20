@@ -135,7 +135,7 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
 {
     int i, pos, anz;
     class CBrowserEntity menu;
-    class CBrowserEntity *pTitel;
+    class CBrowserEntity *pBrowserEntity;
     class CBrowserEntity *pMenu;
     bool bFirst;   
     string str;
@@ -170,9 +170,9 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
         if(pos > anz)
             pos = 1;
     }
-    pTitel = m_pIOGroup->m_pBrowserMenu->SearchGroup(0);
+    pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchGroup(0);
     str = "{\"type\":1,\"pos\":" + to_string(pos) + ",\"anzahl\":" + to_string(anz) + ",\"title\":\"" 
-                                    + string(pTitel->GetText()) + "\",";
+                                    + string(pBrowserEntity->GetText()) + "\",";
     Send(str.c_str());
     str = "\"navbar\":[";
     Send(str.c_str());
@@ -180,8 +180,8 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
     bFirst = true;
     for(i=pos; i < pos+4 ; i++)
     {
-        pTitel = m_pIOGroup->m_pBrowserMenu->SearchGroup(i);
-        if(pTitel == NULL)
+        pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchGroup(i);
+        if(pBrowserEntity == NULL)
             break;
         else
         {   
@@ -191,12 +191,12 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                 str = ",";
                 Send(str.c_str());
             }
-            str = "{\"id\":\"" + to_string(pTitel->GetNiv1()) + "_" + to_string(pTitel->GetNiv2()) 
-                            + "_" + to_string(pTitel->GetNiv3()) + "_" + to_string(pTitel->GetNiv4()) +"\",";
+            str = "{\"id\":\"" + to_string(pBrowserEntity->GetNiv1()) + "_" + to_string(pBrowserEntity->GetNiv2()) 
+                            + "_" + to_string(pBrowserEntity->GetNiv3()) + "_" + to_string(pBrowserEntity->GetNiv4()) +"\",";
             Send(str.c_str());
-            str = "\"text\":\"" + string( pTitel->GetText()) + "\",";
+            str = "\"text\":\"" + string( pBrowserEntity->GetText()) + "\",";
             Send(str.c_str());
-            str = "\"image\":\"" + string(pTitel->GetImage()) + "\"}";
+            str = "\"image\":\"" + string(pBrowserEntity->GetImage()) + "\"}";
             Send(str.c_str());
         }
     }
@@ -369,10 +369,9 @@ void CBrowserSocket::VerwaltHome(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
 void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
 {
     char buf[MSGSIZE];
-    class CBrowserEntity menu;
-    class CBrowserEntity *pTitel;
-    class CBrowserEntity *pMenu;
-    int iLen, iCase, iState, iMax;
+    CBrowserEntity *pBrowserEntity;
+    CBerechneBase *pBerechneBase;
+    int iLen, iCase, iState, iMax, iSet;
     bool bFirst, bContinue = true;
     string str;
   
@@ -394,8 +393,8 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         bFirst = true;           
         while(bContinue)
         {
-            pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
-            if(pTitel == NULL)
+            pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+            if(pBrowserEntity == NULL)
                 bContinue = false;
             else
             {   
@@ -411,17 +410,17 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                                     + "_" + to_string(iNiv3)
                                     + "_" + to_string(iNiv4) +"\",";                                     
                 Send(str.c_str());
-                str = "\"text\":\"" + string(pTitel->GetText()) + "\",";
+                str = "\"text\":\"" + string(pBrowserEntity->GetText()) + "\",";
                 Send(str.c_str());
-                if(pTitel->GetImage() == NULL)
+                if(pBrowserEntity->GetImage() == NULL)
                     str = "\"image\":\"\",";
                 else
-                    str = "\"image\":\"" + string(pTitel->GetImage()) + "\",";
+                    str = "\"image\":\"" + string(pBrowserEntity->GetImage()) + "\",";
                 Send(str.c_str());
-                str = "\"prowotype\":" + to_string(pTitel->GetTyp()) + ",";
+                str = "\"prowotype\":" + to_string(pBrowserEntity->GetTyp()) + ",";
                 Send(str.c_str());
                 str ="\"status\":";
-                switch(pTitel->GetTyp()) {
+                switch(pBrowserEntity->GetTyp()) {
                 case 1:
                     str += "\"not\""; 
                     break;
@@ -429,10 +428,10 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                 case 3:
                 case 4:
                 case 5:
-                    if(pTitel->GetSammelSchalter())
+                    if(pBrowserEntity->GetSammelSchalter())
                         iState = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4, &iMax);
                     else
-                        iState = pTitel->GetOperState()->GetState();
+                        iState = pBrowserEntity->GetOperState()->GetState();
                     str += to_string(iState);
                     break;                
                 default: 
@@ -440,11 +439,11 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
                     break;
                 }                 
                 Send(str.c_str()); 
-                switch(pTitel->GetTyp()) {
+                switch(pBrowserEntity->GetTyp()) {
                     case 3: // Schalter mit Schieber
                     case 5: // usd mit Schieber
-                        if(!pTitel->GetSammelSchalter())
-                            iMax = pTitel->GetOperState()->GetMax();
+                        if(!pBrowserEntity->GetSammelSchalter())
+                            iMax = pBrowserEntity->GetOperState()->GetMax();
                         str = ",\"max\":" + to_string(iMax) + "}";
                         break;
                     default:
@@ -477,16 +476,24 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
     else if(buf[0] == '2') 
     {  
         //Daten werden empfangen und sollen abgespeichert werden 
-        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
-        if(pTitel != NULL) 
+        pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pBrowserEntity != NULL) 
         {
             iLen = ReadBuf(buf, ';');
             iState = atoi(buf);           
             pthread_mutex_lock(&ext_mutexNodejs);
-            if(!pTitel->GetSammelSchalter())
+            if(!pBrowserEntity->GetSammelSchalter())
             {
-                if(pTitel->GetOperChange())
-                    pTitel->GetOperChange()->SetState(iState);
+                pBerechneBase = pBrowserEntity->GetOperState();
+                if(pBerechneBase != NULL)
+                {   if(pBerechneBase->GetTyp() == 0) // ist 0 ausser bei Hue und Somfy
+                        iSet = iState % 256;
+                    else
+                        iSet = iState;
+                }          
+                pBerechneBase = pBrowserEntity->GetOperChange();
+                if(pBerechneBase != NULL)
+                    pBerechneBase->SetState(iSet);
             }
             else 
                 ActivateSammelSchalter(iNiv1, iNiv2, iNiv3, iNiv4, iState);
@@ -497,8 +504,8 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         }    
     }
     else {
-        str += "{\"type\":4,\"id\":\"" + to_string( pTitel->GetNiv1()) + "_" + to_string( pTitel->GetNiv2())
-                        + "_" + to_string( pTitel->GetNiv3()) + "_" + to_string( pTitel->GetNiv4()) +"\",\"error\":\"falsche ID\"}"; 
+        str += "{\"type\":4,\"id\":\"" + to_string( pBrowserEntity->GetNiv1()) + "_" + to_string( pBrowserEntity->GetNiv2())
+                        + "_" + to_string( pBrowserEntity->GetNiv3()) + "_" + to_string( pBrowserEntity->GetNiv4()) +"\",\"error\":\"falsche ID\"}"; 
         Send(str.c_str());
     }
 
@@ -508,7 +515,7 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
 int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int *iMax)
 {
     int iState, iBrightness, iHelpState, iHelpBrightness, iHelpMax, state, i;
-    class CBrowserEntity *pTitel;
+    class CBrowserEntity *pBrowserEntity;
 
     iState = 0;
     iBrightness = 0;
@@ -525,17 +532,17 @@ int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int 
     }
     while(true)
     {
-        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
-        if(pTitel == NULL)
+        pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pBrowserEntity == NULL)
             break;
-        if(pTitel->GetSammelSchalter())
+        if(pBrowserEntity->GetSammelSchalter())
             state = GetSammelSchalterState(iNiv1, iNiv2, iNiv3, iNiv4, iMax);
         else
         {
-            if(pTitel->GetOperState())  
+            if(pBrowserEntity->GetOperState())  
             {   
-                state = pTitel->GetOperState()->GetState();
-                iHelpMax = pTitel->GetOperState()->GetMax();
+                state = pBrowserEntity->GetOperState()->GetState();
+                iHelpMax = pBrowserEntity->GetOperState()->GetMax();
                 if(iHelpMax > *iMax)
                     *iMax = iHelpMax;
             }
@@ -558,9 +565,9 @@ int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int 
 
 void CBrowserSocket::ActivateSammelSchalter(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int iState)
 {   
-    int i;
-    class CBrowserEntity *pTitel;
-
+    int i, iSet;
+    CBrowserEntity *pBrowserEntity;
+    CBerechneBase *pBerechneBase;
     if(iNiv3)
     {
         iNiv4 = 1;
@@ -573,14 +580,23 @@ void CBrowserSocket::ActivateSammelSchalter(int iNiv1, int iNiv2, int iNiv3, int
     }
     while(true)
     {
-        pTitel = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
-        if(pTitel == NULL)
+        pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
+        if(pBrowserEntity == NULL)
             break;
-        if(pTitel->GetSammelSchalter())
+        if(pBrowserEntity->GetSammelSchalter())
             ActivateSammelSchalter(iNiv1, iNiv2, iNiv3, iNiv4, iState);
         else
-        {   if(pTitel->GetOperChange() != NULL)
-                pTitel->GetOperChange()->SetState(iState);
+        {   
+            pBerechneBase = pBrowserEntity->GetOperState();
+            if(pBerechneBase != NULL)
+            {   if(pBerechneBase->GetTyp() == 0) // ist 0 ausser bei Hue und Somfy
+                    iSet = iState % 256;
+                else
+                    iSet = iState;
+            }          
+            pBerechneBase = pBrowserEntity->GetOperChange();
+            if(pBerechneBase != NULL)
+                pBerechneBase->SetState(iSet);
         }
         if(i)
             iNiv4++;

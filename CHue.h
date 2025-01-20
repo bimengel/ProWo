@@ -87,6 +87,7 @@ protected:
 class CBerechneHue : public CBerechneBase
 {
 public:
+    CBerechneHue();
     void init(CHueEntity *pHueEntity);
     virtual void SetState(int state);
     virtual int GetState(); 
