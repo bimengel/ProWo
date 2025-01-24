@@ -34,7 +34,7 @@ int CTH1 :: LesenStarten()
                         VocAlgorithm_process(&m_VocAlgorithmParams, (int32_t)m_iVocRawSignal, (int32_t *)&voc_index);
                     pthread_mutex_lock(&ext_mutexNodejs);
                     m_iTemp = ptr[5]*256 + ptr[6];
-                    m_iHumidity = ptr[7]*256 + ptr[8];
+                    m_iParam2 = ptr[7]*256 + ptr[8];
                     m_iVocSignal = (int)voc_index;
                     PlaceInStat();
                     pthread_mutex_unlock(&ext_mutexNodejs);

@@ -475,8 +475,7 @@ int CRS485::Control()
             else
             {
                 m_iTimeOut++;
-                // JEN 15.06.18 if(m_iTimeOut >= 1000000/m_iZykluszeit)
-                if(m_iTimeOut >= 100000/m_iZykluszeit) // 100 msek
+                if(m_iTimeOut >= 600000/m_iZykluszeit) // 600 msek
                 {   
                     sprintf(ptr, "Timeout Error Adresse=%d, Empf_Soll=%d, Empfangen=%d\n", *m_cStartSendPtr, m_iEmpfLen, m_iAnzEmpf);
                     syslog(LOG_ERR, ptr);

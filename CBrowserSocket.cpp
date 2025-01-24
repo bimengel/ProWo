@@ -511,7 +511,6 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
 
 }
 
-
 int CBrowserSocket::GetSammelSchalterState(int iNiv1, int iNiv2, int iNiv3, int iNiv4, int *iMax)
 {
     int iState, iBrightness, iHelpState, iHelpBrightness, iHelpMax, state, i;
@@ -1552,7 +1551,7 @@ void CBrowserSocket::VerwaltSensor(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                     Send(str.c_str());
                     str = "\"temp\":\"" + strDblRunden((double)pSensor->GetTemp() / 10.0, 1) + "\",";
                     Send(str.c_str());
-                    str = "\"humidity\":\"" + strDblRunden((double)pSensor->GetHumidity() / 10.0, 1) + "\",";
+                    str = "\"humidity\":\"" + strDblRunden((double)pSensor->GetParam2() / 10.0, 1) + "\",";
                     Send(str.c_str());
                     str = "\"VocSignal\":\"" + to_string(pSensor->GetVocSignal()) + "\"}";
                     Send(str.c_str());
@@ -1579,7 +1578,7 @@ void CBrowserSocket::VerwaltSensor(int iNiv1, int iNiv2, int iNiv3, int iNiv4)
                         if(i)
                             str = ",";
                         str += "{\"temp\":\"" + to_string(pSensor->m_sStatTemp[j]) + "\",\"humi\":\""
-                                    + to_string( pSensor->m_sStatHumidity[j]) + "\",\"voc\":\""
+                                    + to_string( pSensor->m_sStatParam2[j]) + "\",\"voc\":\""
                                     + to_string( pSensor->m_sStatVocSignal[j]) + "\"}";;
                         Send(str.c_str());
                         if(++j >= 1440)

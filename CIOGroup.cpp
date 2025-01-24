@@ -1758,6 +1758,10 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
             {   m_iMaxAnzModBusRTUClient++;
                 m_iMaxAnzSensor++;
             }
+            else if(strncmp(buf, "ULTRASONICLEVELSENSOR", 21) == 0 && strlen(buf) == 21)
+            {   m_iMaxAnzModBusRTUClient++;
+                m_iMaxAnzSensor++;
+            }
             else if((strncmp(buf, "TH1", 3) == 0 && strlen(buf) == 3)
                     || (strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
                     ||(strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9))
@@ -2025,6 +2029,37 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }
+            else if(strncmp(buf, "ULTRASONICLEVELSENSOR", 21) == 0 && strlen(buf) == 21)
+            {
+                if(m_iAnzSensor < m_iMaxAnzSensor)
+                {
+                    address = m_pReadFile->ReadNumber ();
+                    if(m_pModBusRTU != NULL)
+                    {
+                        if(address > 0 && address < 256)
+                        {
+                            CModBusRTUClient *pClient = m_pModBusRTU->AppendModBus(address, 50000);
+                            CUltrasonicLevelSensor *pPtr;
+                            pPtr = new CUltrasonicLevelSensor(m_iAnzSensor+1);
+                            pPtr->SetModBusClient(pClient);
+                            pPtr->SetFunction(1);
+                            m_pReadFile->ReadSeparator();
+                            str = m_pReadFile->ReadText();
+                            if(str == "")
+                                str = "Kein Name";
+                            pPtr->SetName(str);                            
+                            m_pSensor[m_iAnzSensor] = pPtr;
+                            m_iAnzSensor++;
+                        }
+                        else
+                            m_pReadFile->Error(37);
+                    }
+                    else
+                        m_pReadFile->Error(38);
+                }
+                else
+                    m_pReadFile->Error(64);
+            }            
             else if(strncmp(buf, "TH1SEARCH", 10) == 0 && strlen(buf) == 10)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)

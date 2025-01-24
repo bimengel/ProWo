@@ -29,24 +29,24 @@ public:
 	~CSensor();
 	virtual int LesenStarten() {return 0;};
 	int GetTemp();
-    int GetHumidity();
+    int GetParam2();
     int GetVocSignal();
     int GetTyp();
     void SetName(string strName);
     void SetKorrTemp(int iKorrTemp);
-    void SetKorrHumidity(int iKorrHumidity);
+    void SetKorrParam2(int iKorrParam2);
     string GetName();
     short m_sStatTemp[ANZSTATSENSOR];
-    short m_sStatHumidity[ANZSTATSENSOR];
+    short m_sStatParam2[ANZSTATSENSOR];
     short m_sStatVocSignal[ANZSTATSENSOR];
 	
 protected:
-    int m_iTyp; // 1=TQS3, 2=TH1
+    int m_iTyp; // 1=TQS3, 2=TH1 // 3=ULC (Ultrasonic Level Sensor)
     int m_iNummer; 
 	int m_iTemp;
     int m_iKorrTemp;
-	int m_iHumidity;
-    int m_iKorrHumidity;
+	int m_iParam2;
+    int m_iKorrParam2;
     int m_iVocSignal;
     string m_strName;
     
@@ -76,6 +76,15 @@ public:
 
 private:
 
+};
+
+class CUltrasonicLevelSensor : public CSensorModBus // Ultrasonic Level Sensor
+{   
+public:
+    CUltrasonicLevelSensor(int nr);
+    virtual ~CUltrasonicLevelSensor();
+    virtual void SetFunction(int func);
+    virtual int LesenStarten(); 
 };
 
 #endif // _CSENSOR_H_

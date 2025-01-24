@@ -372,7 +372,7 @@ int COperTEMP::resultInt()
 
 int COperHUM::resultInt()
 {
-    return m_pTempSensor->GetHumidity();
+    return m_pTempSensor->GetParam2();
 }  
 
 int COperQUAL::resultInt()

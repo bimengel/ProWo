@@ -29,12 +29,12 @@ CSensor::CSensor(int nr)
     m_iNummer = nr;
     m_iTemp = 0;
     m_iKorrTemp = 0;
-    m_iHumidity = 0;
-    m_iKorrHumidity = 0;
+    m_iParam2 = 0;
+    m_iKorrParam2 = 0;
     m_iVocSignal = 0;
     for(i=0; i < ANZSTATSENSOR; i++)
     {
-        m_sStatHumidity[i] = 0;
+        m_sStatParam2[i] = 0;
         m_sStatTemp[i] = 0;
         m_sStatVocSignal[i] = 0;
     }
@@ -52,9 +52,9 @@ int CSensor::GetTemp()
 }
 
 // Wert der Sensor-Feuchtigkeit abfragen
-int CSensor::GetHumidity()
+int CSensor::GetParam2()
 {
-    return m_iHumidity + m_iKorrHumidity;
+    return m_iParam2 + m_iKorrParam2;
 }
 
 // Wert der Sensor-VocSignal abfragen
@@ -77,9 +77,9 @@ void CSensor::SetKorrTemp(int iKorrTemp)
     m_iKorrTemp = iKorrTemp;
 }
 
-void CSensor::SetKorrHumidity(int iKorrHumidity)
+void CSensor::SetKorrParam2(int iKorrParam2)
 {
-    m_iKorrHumidity = iKorrHumidity;
+    m_iKorrParam2 = iKorrParam2;
 }
 string CSensor::GetName()
 {
@@ -267,8 +267,132 @@ void CSensor::PlaceInStat()
     idx = m_pUhr->getUhrmin();
     if(idx < ANZSTATSENSOR)
     {
-        m_sStatHumidity[idx] = (short)m_iHumidity;
+        m_sStatParam2[idx] = (short)m_iParam2;
         m_sStatTemp[idx] = (short)m_iTemp;
         m_sStatVocSignal[idx] = (short)m_iVocSignal;
     }
+}
+//
+// Ultrasonic Level Sensor
+//
+CUltrasonicLevelSensor::CUltrasonicLevelSensor(int nr) : CSensorModBus( nr)
+{
+    m_iTyp = 3;
+}
+
+CUltrasonicLevelSensor::~CUltrasonicLevelSensor() {
+}
+
+void CUltrasonicLevelSensor :: SetFunction(int func)
+{
+    unsigned char *pCh = m_pModBusRTUClient->GetSendPtr ();
+    m_iFunction = func;
+
+    switch(func) {
+    case 1: // Distanzabfrage berechneter Wert aus mehreren Messungen (500ms)
+        pCh[1] = 0x03; // function :reading of input register
+        pCh[2] = 0x01; // Register address 0x0100
+        pCh[3] = 0x00;
+        pCh[4] = 0x00; // register count
+        pCh[5] = 0x01;
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(2);
+        break;
+    case 2: // Distanzabfrage sofort Wert (Antwortzeit 100ms)
+        pCh[1] = 0x03; // function :reading of input register
+        pCh[2] = 0x01; // Register address 0x0101
+        pCh[3] = 0x01;
+        pCh[4] = 0x00; // register count
+        pCh[5] = 0x01;
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(2);  
+        break;  
+    case 3: // Temperaturabfrage
+        pCh[1] = 0x03; // function :reading of input register
+        pCh[2] = 0x01; // Register address 0x0102
+        pCh[3] = 0x02;
+        pCh[4] = 0x00; // register count
+        pCh[5] = 0x01;
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(2);
+        break;
+    case 4: // Adresse ändern
+        pCh[1] = 0x06;
+        pCh[2] = 0x01;
+        pCh[3] = 0x02;
+        pCh[4] = 0x00;
+        pCh[5] = m_pModBusRTUClient->GetNewAddress();   // neue Adresse
+        m_pModBusRTUClient->SetSendLen(6);
+        m_pModBusRTUClient->SetEmpfLen(3);
+        break;
+    default:
+        break;
+    }
+}
+int CUltrasonicLevelSensor :: LesenStarten()
+{
+    unsigned char *ptr;
+    int status;
+    int ret = 0;
+    char ptrLog[100];
+
+    status = m_pModBusRTUClient->GetStatus();  
+    if(status == 3) // Empfang ist erfolgt
+    {   
+        status = m_pModBusRTUClient->GetError ();
+        ptr = m_pModBusRTUClient->GetEmpfPtr();
+        if(!status)
+        {
+            switch(m_iFunction) {
+            case 1: // Distanz lesen berechneter Wert
+            case 2: // Wert direkt nach Messung
+                if(*(ptr+1) == 0x03 && *(ptr+2) == 0x02)
+                {
+                    pthread_mutex_lock(&ext_mutexNodejs);
+                    m_iParam2 = ptr[3]*256 + ptr[4];
+                    PlaceInStat();
+                    pthread_mutex_unlock(&ext_mutexNodejs);                   
+                }
+                else
+                {   
+                    sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d  incorrect distance value", m_iNummer);				    ;
+                    syslog(LOG_ERR, ptrLog);
+                }
+                break;
+            case 3:
+                if(*(ptr+1) == 0x03 && *(ptr+2) == 0x02)
+                {
+                    pthread_mutex_lock(&ext_mutexNodejs);
+                    m_iTemp = ptr[3]*256 + ptr[4];
+                    PlaceInStat();
+                    pthread_mutex_unlock(&ext_mutexNodejs);
+                    syslog(LOG_INFO, (to_string(m_iTemp).c_str()));                    
+                }
+                else
+                {   
+                    sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d  incorrect temperatur value", m_iNummer);				    ;
+                    syslog(LOG_ERR, ptrLog);
+                }
+                break;                
+            case 4: // Adresse ändern
+                sprintf(ptrLog, "UltrasonicLevelSensor address changed");
+                syslog(LOG_ERR, ptrLog);
+                m_pModBusRTUClient->SetAddress(m_pModBusRTUClient->GetNewAddress());
+                SetFunction(1);
+                break;
+            }
+        }
+        else
+        {	
+            int adr = m_pModBusRTUClient->GetAddress();
+            sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d, Adresse = %d,  error %d", m_iNummer, adr, status);
+            syslog(LOG_ERR, ptrLog);
+            ret = -1;
+        }
+        // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
+        m_pModBusRTUClient->StartSend();
+    }
+    if(status == 0)
+        m_pModBusRTUClient->StartSend();
+    return(ret);
 }

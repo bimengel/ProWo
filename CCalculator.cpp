@@ -606,6 +606,18 @@ void CConfigCalculator::number()
             else
                 m_pReadFile->Error(20);            
         }
+        else if(strncmp(text, "SOMFY", 5) == 0 && strlen(text) == 5) // HUE
+        {
+            if(nr > 0 && nr <= m_pIOGroup->m_pSomfy->GetAnzEntity())
+            {   
+                COperSomfy *pOper = new COperSomfy;
+                pOper->setType(1);
+                pOper->setOper(m_pIOGroup->m_pSomfy->GetAddress(nr));
+                AddOperToList (pOper);
+            }
+            else
+                m_pReadFile->Error(20);            
+        }        
         else if(strncmp(text, "ALARM", 5) == 0 && strlen(text) == 5)   
         {
             if(m_pIOGroup->m_pAlarm != NULL)
