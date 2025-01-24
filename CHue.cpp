@@ -322,7 +322,7 @@ void CHueEntity::SetState(int state)
 {
     CHueProperty HueProperty;
     m_iState = state % 256;
-    if(m_iState)
+    if(m_iState && state/256 != 0)
         m_iBrightness =  state / 256;
     HueProperty.m_iNr = m_iNr;
     HueProperty.m_iTyp = m_iTyp;

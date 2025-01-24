@@ -287,8 +287,14 @@ int CSomfyEntity::GetState()
 void CSomfyEntity::SetState(int iVal)
 {
     m_iState = iVal % 256;
-    if(m_iState)
-        m_iVal = iVal / 256;  
+    if(m_iTyp == 1) 
+    {   // SOMFYLEDLIGHT wenn ausgeschlatet die Helligkeit beibehalten
+        // wenn eingeschaltet und iVal auf 0, wird der alte Stand übernommen
+        if(m_iState && iVal/256 != 0)
+            m_iVal = iVal / 256;
+    }
+    else
+        m_iVal = iVal / 256;
 }    
 
 int CSomfyEntity::GetTyp()

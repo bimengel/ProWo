@@ -28,7 +28,7 @@ public:
     
 private:
     int m_iNr;      // wird gebraucht für die History
-    int m_iTyp;     // 
+    int m_iTyp;     // 1 = SOMFYLEDLIGHT, 2 = SOMFYMARKISE, 3 = SOMFYWINDOW
     int m_iID;
     int m_iState; // on or off
     int m_iVal;
