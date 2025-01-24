@@ -287,7 +287,8 @@ int CSomfyEntity::GetState()
 void CSomfyEntity::SetState(int iVal)
 {
     m_iState = iVal % 256;
-    m_iVal = iVal / 256;  
+    if(m_iState)
+        m_iVal = iVal / 256;  
 }    
 
 int CSomfyEntity::GetTyp()

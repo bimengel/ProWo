@@ -393,6 +393,7 @@ void CBrowserSocket::VerwaltSteuerung(int iNiv1, int iNiv2, int iNiv3, int iNiv4
         bFirst = true;           
         while(bContinue)
         {
+            iMax = 0;
             pBrowserEntity = m_pIOGroup->m_pBrowserMenu->SearchTitel(iNiv1, iNiv2, iNiv3, iNiv4);
             if(pBrowserEntity == NULL)
                 bContinue = false;
