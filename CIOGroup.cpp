@@ -1773,7 +1773,7 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
                     || (strncmp(buf, "HUEGROUP", 8) == 0 && strlen(buf) == 8))
                 m_iMaxAnzHueEntity++;
             else if((strncmp(buf, "SOMFYLEDLIGHT", 13) == 0 && strlen(buf) == 13)
-                    || (strncmp(buf, "SOMFYMARKISE", 12) == 0 && strlen(buf) == 12)
+                    || (strncmp(buf, "SOMFYAWNING", 11) == 0 && strlen(buf) == 11)
                     || (strncmp(buf, "SOMFYWINDOW", 11) == 0 && strlen(buf) == 11))
                 m_iMaxAnzSomfyEntity++;
         }
@@ -2447,7 +2447,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 if(error)
                     m_pReadFile->Error(error);               
             }
-            else if(strncmp(buf, "SOMFYMARKISE", 12) == 0 & strlen(buf) == 12)
+            else if(strncmp(buf, "SOMFYAWNING", 11) == 0 & strlen(buf) == 11)
             {
                 if(m_pSomfy == NULL)
                     error = 150;

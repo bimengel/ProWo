@@ -155,23 +155,32 @@ void CSomfy::Control()
         strJson = "{\"actions\":[{\"commands\":[{\"name\":";      
         switch(SomfyProperty.m_iTyp)
         {
-            case 1: // LED Licht
+            case 1: // SOMFYLEDLIGHT LED
                 if(SomfyProperty.m_iState)
                 {  
                     strJson += "\"on\"}";
                     if(SomfyProperty.m_iVal)
-                        strJson += ",{\"name\":\"setIntensity\",\"parameters\":[" + to_string(SomfyProperty.m_iVal) + "]}";
+                        strJson += ",{\"name\":\"setPosition\",\"parameters\":[" + to_string(SomfyProperty.m_iVal) + "]}";
                 }
                 else
                     strJson += "\"off\"}";
                 break;
-            case 2: // Markise
-                if(SomfyProperty.m_iState) 
-                    strJson += "\"down\"}";
-                else
+            case 2: // SOMFYAWNING
+                switch(SomfyProperty.m_iState) {
+                case 0: 
                     strJson += "\"up\"}";
+                    break;
+                case 1:
+                    strJson += "\"down\"}";
+                    if(SomfyProperty.m_iVal)
+                        strJson += ",{\"name\":\"setPosition\",\"parameters\":[" + to_string(SomfyProperty.m_iVal) + "]}";                                        
+                    break;
+                default:
+                    strJson += "\"stop\"}";
+                    break;
+                }
                 break;  
-            case 3: // Velux Dachfenster
+            case 3: // SOMFYWINDOW Velux Dachfenster
                 switch(SomfyProperty.m_iState) {
                 case 0:
                     strJson += "\"close\"}";
@@ -287,8 +296,9 @@ int CSomfyEntity::GetState()
 void CSomfyEntity::SetState(int iVal)
 {
     m_iState = iVal % 256;
-    if(m_iTyp == 1) 
-    {   // SOMFYLEDLIGHT wenn ausgeschlatet die Helligkeit beibehalten
+    if(m_iTyp == 1 || m_iTyp == 2) 
+    {   // SOMFYLEDLIGHT oder SOMFYAWNING wenn ausgeschlatet 
+        // die Helligkeit oder Position beibehalten
         // wenn eingeschaltet und iVal auf 0, wird der alte Stand übernommen
         if(m_iState && iVal/256 != 0)
             m_iVal = iVal / 256;
