@@ -986,7 +986,10 @@ int CUartI2C::ReadLen(unsigned char *ptr, int iPos, bool bTest)
 			break;
 		else // Zeichen empfangen (!! mit oder ohne Fehler !!)
 		{	if(ch & 0x8E)
-                continue;
+            // 20250722 Es steht ein Fehler an (Holzheim)
+            {   str = "GSM Empfang Fehler (LSR Register): " + to_string(ch);
+                syslog(LOG_ERR, str.c_str());
+            }
             ch = BSC_ReadReg (1, m_pBoardAddr->Addr3, RHR);
 			if(ch != 0x0D && ch != 0x0A)
             {
@@ -1002,7 +1005,7 @@ int CUartI2C::ReadLen(unsigned char *ptr, int iPos, bool bTest)
     {
         if(bTest)
         {
-            str = "Empfang: " + string((char *)ptr, iPos);
+            str = "GSM Empfang: " + string((char *)ptr, iPos);
             syslog(LOG_INFO, str.c_str());
         }
     }
