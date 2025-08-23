@@ -26,8 +26,13 @@ ProWo is free software: you can redistribute it and/or modify it
 //  gespeichert und beim Einschalten wird diese Uhrzeit wieder gelesen. Diese
 //  erfolgt weil das Paket "fake-hwclock" installiert ist. 
 //  Aus diesem Grunde ist die RTC-Uhrzeit immer grösser beim Aufstarten und wird als Uhrzeit übernommen. 
-//  Ist beim Aufstarten die RTC-Uhrzeit mehr als eine Stunde grösser als die Uhrzeit des Betriebsystems
-//  
+//  Ist beim Aufstarten die RTC-Uhrzeit weniger als eine Stunde kleiner als die Uhrzeit des Betriebsystems,
+//  wird die Systemuhrzeit übernommen und in den RTC geschrieben. Ist die Differenz grösser
+//  wird der Startvorgang gestoppt und "Batterie leer?" angezeigt. Nach dem Druck der grünen Taste
+//  besteht die Möglichkeit zwischen der Systemuhrzeit oder der RTC-Uhrzeit zu entscheiden, die gewählte
+//  Uhrzeit wird auch in die RTC geschrieben. Erfolgt keine Wahl innerhalb von 3 Minuten wird die
+//  Systemuhrzeit übernommen.
+//
 //  Das Daemon systemd-timesyncd überträgt die Uhrzeit von NTP-Servern ins System.
 //  Der Status kann mit dem Kommando "sudo service systemd-timesyncd status" angezeigt werden.
 //  Die Konfigurationsdatei ist "/etc/systemd/timesyncd.conf"
@@ -337,7 +342,8 @@ CUhr::CUhr()
     string str1, str2, str3;
     int iRet = 0, button;
     int iUeb, iTime = 0, iAbbruch = 0;
-    
+    bool bTaste;
+
     m_iAktTag = 0;
 
     m_uhrzeit = time(NULL);
@@ -385,6 +391,7 @@ CUhr::CUhr()
     }
     
     iUeb = 0;
+    bTaste = false;
     while(iRet)
     {
         sleep(1); // 1 sec 
@@ -423,10 +430,15 @@ CUhr::CUhr()
             switch(button) {
                 case BUTTONUP:
                 case BUTTONDOWN:
-                    if(iUeb == 1)
-                        iUeb = 2;
-                    else
-                        iUeb = 1;
+                    if(!bTaste)
+                    {
+                        bTaste = true;
+                        if(iUeb == 1)
+                            iUeb = 2;
+                        else
+                            iUeb = 1;
+                    }
+                    iAbbruch = 0;
                     break;
                 case BUTTONOK:
                     if(++iTime > 2)
@@ -446,9 +458,11 @@ CUhr::CUhr()
                             m_tSys = *t;                        
                             setRTC(&m_tSys);
                         }
-                    }                    
+                    } 
+                    iAbbruch = 0;                   
                     break;
                 default:
+                    bTaste = false;
                     break;
             }
         }

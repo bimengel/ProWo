@@ -2753,7 +2753,12 @@ void CIOGroup::Addr_unique (CBoardAddr *addr, int Anzahl, int Inh1, int Addr2,
         Inh2 = 1 << i;
         Inh2 |= 0XF0;
     }
-    
+    if(ext_iI2CSwitchType == 2)
+    {
+        i = Inh1 & 0x03;
+        Inh1 = 1 << i;
+        Inh1 |= 0XF0;
+    }    
     for(i=0; i < Anzahl; i++)
     {
         // wird nicht auf Register getestet !!
@@ -2818,6 +2823,7 @@ void CIOGroup::initAusgExp(int *AnzAus, int Inh1, int Addr2, int Inh2, int Addr3
 void CIOGroup::setEingang(CBoardAddr * pBoardAddr)
 {
     int ret;
+    
 // MCP23017 I/O
     while(true)
     {
@@ -2833,8 +2839,18 @@ void CIOGroup::setEingang(CBoardAddr * pBoardAddr)
         //  .INTPOL=0 INT active low
         //  .unimplemented
         // IOCON auf Adresse 0x0B denn diese Adresse ist frei wenn Programmierung richtig
+        
+        // ist der erste I2C-Multiplexer richtig programmiert? 
+        ret = BSC_Read(1, pBoardAddr->Addr1);
+        if(((ret & 0x0F) != (pBoardAddr->Inh1 & 0x0F)) && m_iTest != 11) 
+            m_pReadFile->Error(9);    
+        // ist der zweite vorhanden, wenn ja ist er richtig programmiert    
+        if(pBoardAddr->Addr2)
+        {   ret  = BSC_Read(1, pBoardAddr->Addr2);
+            if(((ret & 0x0F) != (pBoardAddr->Inh2 & 0x0F)) && m_iTest != 11) 
+                m_pReadFile->Error(9); 
+        }
         BSC_WriteReg(1, pBoardAddr->Addr3, 0x9C, 0x0B);
-
         // IOCON lesen und testen ob gleich
         ret = BSC_ReadReg (1, pBoardAddr->Addr3, pBoardAddr->Reg + IOCON);
         if(ret != 0x9C)
