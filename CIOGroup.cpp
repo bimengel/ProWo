@@ -65,7 +65,7 @@ void CIOGroup::Control(bool bStart)
     int len, res;
 
     // Uhr aktualisieren
-    m_pUhr->aktUhr();    
+    m_pUhr->aktUhr(true);    
 
     // Easywave über USB-Stick
     if(m_pEWUSBSerial)

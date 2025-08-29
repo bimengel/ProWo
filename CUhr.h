@@ -27,7 +27,7 @@ class CUhr
 public:
     CUhr();
     ~CUhr();
-    void aktUhr(); 
+    void aktUhr(bool bWriteRTC); 
     void setRTC(struct tm *t);
     void getRTC(struct tm *t);
     void RechneSASU();
@@ -69,7 +69,7 @@ public:
 protected:
     int BCDinHex(int val);
     int HexinBCD(int val);
-
+    void setSystemtime(time_t tmuhrzeit);
     time_t m_uhrzeit;
     struct tm m_tSys;
     int m_iAktTag;          // wird gebraucht für den Tagwechsel

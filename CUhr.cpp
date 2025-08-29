@@ -64,7 +64,7 @@ void CUhr::ResetSimulation()
     m_bSimUhrzeit = false;
 }
 
-void CUhr::aktUhr()
+void CUhr::aktUhr(bool bwriteRTC)
 {
     pthread_mutex_lock(&m_mutexUhr);    
     m_iUhrYearAlt = m_iUhrYear;
@@ -89,7 +89,8 @@ void CUhr::aktUhr()
     if(m_iUhrWochenTag < 0)  // Montag ist der 1. Tag in der Woche !!
         m_iUhrWochenTag = 6;
     // Sonnenaufgang und -untergang werden nachts um zwei Uhr berechnet
-    if(m_iAktTag != m_tSys.tm_mday && m_iUhrMin > 120)
+    // und die Systemuhrzeit in RTC geschrieben
+    if(bwriteRTC && m_iAktTag != m_tSys.tm_mday && m_iUhrMin > 120)
     {
         setRTC(gmtime(&m_uhrzeit));  // Uhrzeit in den RTC Baustein schreiben !!
         RechneSASU ();
@@ -386,9 +387,9 @@ CUhr::CUhr()
             iRet = 2; // System länger als ein Tag ausgeschaltet ! 
             str3 = "Lange ausgeschaltet?";
         }
-        else
-            ctime(&uhrzeitRTC);
-    }
+        else 
+            setSystemtime(uhrzeitRTC);
+   }
     
     iUeb = 0;
     bTaste = false;
@@ -409,7 +410,7 @@ CUhr::CUhr()
             getRTC(&tRTC);
             // Uhrzeit in die UTC (Universal Time)  Uhrzeit umrechnen
             uhrzeitRTC = timegm(&tRTC);
-            aktUhr();
+            aktUhr(false);
             if(iUeb == 1)
                 str3 = "S Systemuhrzeit";
             else
@@ -450,7 +451,7 @@ CUhr::CUhr()
                             getRTC(&tRTC);
                             // Uhrzeit in die UTC (Universal Time)  Uhrzeit umrechnen
                             uhrzeitRTC = timegm(&tRTC);
-                            ctime(&uhrzeitRTC);
+                            setSystemtime(uhrzeitRTC);
                         }
                         else
                         {   // Systemuhrzeit bleibt, speichern in RTC
@@ -485,8 +486,22 @@ CUhr::CUhr()
     m_iUhrYearAlt = m_iUhrYear;
     RechneSASU();
     ResetSimulation();
-    aktUhr();
+    aktUhr(true);
 }
+
+void CUhr::setSystemtime(time_t tmUhr)
+{   
+    char output[50];
+    struct tm tmloc;
+     
+    localtime_r(&tmUhr, &tmloc);
+    snprintf(output, 50, "timedatectl set-time \"%d-%02d-%2d %02d:%02d:%02d\"",
+        tmloc.tm_year+1900, tmloc.tm_mon+1, tmloc.tm_mday, tmloc.tm_hour, tmloc.tm_min, tmloc.tm_sec); 
+    int ret = system("timedatectl set-ntp 0");
+    ret = system(output);
+    m_uhrzeit = time(NULL);
+    ret = system("timedatectl set-ntp 1");
+}       
 
 CUhr::~CUhr()
 {
@@ -519,10 +534,10 @@ void CUhr::setTime()
     time_t uhrzeit;
     struct tm *t;
 
-    uhrzeit = mktime(&m_tSys); // lokale Uhrzeit
-    ctime(&uhrzeit);
-    t = gmtime(&uhrzeit);      // aus der aktuellen UHrzeit die UTC-Uhrzeit errechnen
+    uhrzeit = mktime(&m_tSys); // lokale Uhrzeit in m_tSys in UTC umrechnen
+    t = gmtime(&uhrzeit);      // time_t in struct tm schreiben
     setRTC(t);
+    setSystemtime(uhrzeit);    
     m_uhrzeit = time(NULL);
     t = localtime(&m_uhrzeit);
     m_tSys = *t;
