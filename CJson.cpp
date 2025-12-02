@@ -20,8 +20,6 @@ CJson::CJson() {
 
 CJson::~CJson() {
     
-    CJsonNode *pJsonNode;
-    
     if(m_pJsonNode != NULL)
     {
         purge(m_pJsonNode);
@@ -80,6 +78,9 @@ void CJson::NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp)
     map<std::string, CJsonNodeValue *>::iterator it;
     CJsonNodeValue JsonNodeValue;
 
+    if(pJsonNode == NULL)
+        i = 1;
+
     if(!pJsonNode->m_mapNode.empty())
     {
         it = pJsonNode->m_mapNode.begin();
@@ -101,7 +102,7 @@ void CJson::NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp)
                 NodeWriteToFile(JsonNodeValue.m_pJsonNode, iLevel+1, i);
                 break;
             case 2: // Array
-                str += "[\"";
+                str += "[\n";
                 m_pReadFile->WriteLine(str.c_str());
                 if(it == pJsonNode->m_mapNode.end())
                     i = 12;
@@ -114,7 +115,7 @@ void CJson::NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp)
                 str += to_string(JsonNodeValue.m_dValue);
                 break;
             case 4: // string
-                str += JsonNodeValue.m_strValue;
+                str += "\"" + JsonNodeValue.m_strValue + "\"";
                 break; 
             case 5: // boolean
                 if(JsonNodeValue.m_dValue)
@@ -131,7 +132,7 @@ void CJson::NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp)
             }  
             if(str.length()) 
             {
-                if(it != pJsonNode->m_mapNode.end() && (i == 3 || i == 4))
+                if(it != pJsonNode->m_mapNode.end() && (i == 3 || i == 4 || i == 5))
                     str += ",\n";
                 else
                     str += "\n";
@@ -163,7 +164,7 @@ void CJson::NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp)
 
 bool CJson::parse(char* pPtr, int len, int* iErr)
 {
-    int iPos, iLevel, iTyp, iVal;
+    int iPos, iLevel, iTyp, iVal=0;
     bool bRet = false, bContinue = true; 
     int iState = 0;
     char ch;
@@ -179,7 +180,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
         
         switch(iState) {
         case 0: // es muss { oder whitespace  
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             else if(ch == '{')
             {
@@ -189,20 +190,37 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 iLevel++;
                 iState = 1;
             }
-            else if(ch == '}' | ch == ']')
+            else if(ch == '}' || ch == ']')
             {
                 iLevel--;
                 if(iLevel < 0)
                     bContinue = false;
                 pJsonNode = pJsonNode->m_pJsonNodeBefore;
             }
-            else if(',')
+            else if(ch == ',')
                 iState = 1;
+            else if(ch == '[') 
+            {   // neuer Knoten mit einem array als Inhalt
+                
+                if(pJsonNode == NULL)
+                    pJsonNode = new CJsonNode(pJsonNode);
+                pJsonNodeValue = new CJsonNodeValue(2);
+                pJsonNodeValue->m_pJsonNode = new CJsonNode(pJsonNode);
+                strName = to_string(pJsonNode->m_iArray++);
+                pJsonNode->m_mapNode.insert({strName, pJsonNodeValue});
+                pJsonNode = pJsonNodeValue->m_pJsonNode;
+                if(iLevel == 0)
+                    m_pJsonNode = pJsonNode;
+                iLevel++;  
+                iState = 7;
+                strValue = "";
+                pJsonNode->m_iArray = 1;
+            }                
             else 
                 bContinue = false;
             break;
         case 1: // es muss " für Namen oder whitespace
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             if(ch == '"')
             {
@@ -225,7 +243,29 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                     bContinue = false;
                 iState = 0;
                 pJsonNode = pJsonNode->m_pJsonNodeBefore;
-            }            
+            }   
+            else if(ch == '[') 
+            {
+                iLevel++;                    
+                pJsonNodeValue = new CJsonNodeValue(2);
+                strName = to_string(pJsonNode->m_iArray++);
+                pJsonNodeValue->m_pJsonNode = new CJsonNode(pJsonNode);
+                pJsonNode->m_mapNode.insert({strName, pJsonNodeValue});
+                pJsonNode = pJsonNodeValue->m_pJsonNode;
+                iState = 7;
+                strValue = "";
+                pJsonNode->m_iArray = 1;
+            }  
+            else if(isdigit(ch))  
+            {
+                if(pJsonNode->m_iArray)
+                {
+                    strValue = ch;
+                    iState = 8;
+                }
+                else
+                    bContinue = false;
+            }      
             else
                 bContinue = false;
             break;
@@ -236,7 +276,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 iState = 3;
             break;
         case 3:     // warten auf : oder whitespace oder
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             if(ch == ':')
                 iState = 4;
@@ -244,7 +284,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 bContinue = false;
             break;
         case 4:     // warten auf die Value (
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             else if(ch == '"') // es folgt eine Zeichenkette
             {
@@ -254,7 +294,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
             else if(ch == '[') // es folgt ein array
             { 
                 iLevel++;
-                pJsonNodeValue = new CJsonNodeValue(2);
+                pJsonNodeValue = new CJsonNodeValue(2);               
                 pJsonNodeValue->m_pJsonNode = new CJsonNode(pJsonNode);
                 pJsonNode->m_mapNode.insert({strName, pJsonNodeValue});
                 pJsonNode = pJsonNodeValue->m_pJsonNode;
@@ -285,9 +325,9 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 bContinue = false;
             break;
         case 5:  // false oder true wird eingelesen
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
-            else if(ch == ',' | ch == '}')
+            else if(ch == ',' || ch == '}')
             {
                 iTyp = 0;
                 if(strValue == "false")
@@ -341,7 +381,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 strValue += ch;
             break;
         case 7: // es folgt ein Array
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             else if (ch == ']') // es ist ein leeres array
             {
@@ -358,7 +398,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 strValue += ch;            
                 iState = 8;
             }
-            else if(ch == '{')
+            else if(ch == '{') 
             {
                 iLevel++;
                 pJsonNodeValue = new CJsonNodeValue(1);
@@ -368,24 +408,32 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 pJsonNode = pJsonNodeValue->m_pJsonNode;
                 iState = 1;
             }
+            else if(ch == '[') 
+            {
+                iLevel++;
+                pJsonNodeValue = new CJsonNodeValue(2);
+                strName = to_string(pJsonNode->m_iArray++);
+                pJsonNodeValue->m_pJsonNode = new CJsonNode(pJsonNode);
+                pJsonNode->m_mapNode.insert({strName, pJsonNodeValue});
+                pJsonNode = pJsonNodeValue->m_pJsonNode;
+                iState = 7;
+                strValue = "";
+                pJsonNode->m_iArray = 1;                
+            }
             else
                 bContinue = false;
             break;
         case 8: // numerischer Wert
-            if(isdigit(ch))
+            if(isdigit(ch) || ch == '.') 
                 strValue += ch;
-            else if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            else if(IsSpaceOrEnd(ch))
                 break;
-            else if(ch == ',' | ch == '}')
+            else if(ch == ',' || ch == '}' || ch == ']') 
             {
                 iState = 0;
                 if(pJsonNode->m_iArray)
-                {
-                    pJsonNodeValue = new CJsonNodeValue(2);
                     strName = to_string(pJsonNode->m_iArray++);
-                }
-                else
-                    pJsonNodeValue = new CJsonNodeValue(3);
+                pJsonNodeValue = new CJsonNodeValue(3);
                 pJsonNodeValue->m_dValue = strtod(strValue.c_str(), NULL);
                 pJsonNode->m_mapNode.insert({strName, pJsonNodeValue});
                 iPos--;
@@ -394,7 +442,7 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
                 bContinue = false;  
             break;
         case 9: // ein array Wert wurde eingelesen, es muss , oder ] folgen
-            if(ch == ' ' | ch == 0x0a | ch == 0x0d)
+            if(IsSpaceOrEnd(ch))
                 break;
             else if(ch == ',')
                 iState = 4; // strValue einlesen
@@ -422,6 +470,13 @@ bool CJson::parse(char* pPtr, int len, int* iErr)
     return bRet;
 }
 
+bool CJson::IsSpaceOrEnd(char ch)
+{
+    if(ch == ' ' || ch == 0x0a || ch == 0x0d)
+        return true;
+    else
+        return false;
+}
 CJsonNode::CJsonNode(CJsonNode *pJsonNode)
 {
     m_pJsonNodeBefore = pJsonNode;

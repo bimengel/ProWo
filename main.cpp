@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     static char path[] = "/home/pi/";
     j = strlen(path);
     pProgramPath = new char[j+1];
-    strcpy(pProgramPath, path);
+    strcpy(pProgramPath, path); 
 //#else 
 /*   j = strlen(argv[0]);
     pProgramPath = new char[j+1];

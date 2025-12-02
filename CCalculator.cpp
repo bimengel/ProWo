@@ -467,7 +467,15 @@ void CConfigCalculator::number()
                 else if(strncmp(text, "MONATW", 6) == 0 && strlen(text) == 6)
                     i = 7;     
                 else if(strncmp(text, "JAHRW", 5) == 0 && strlen(text) == 5)
-                    i = 8;  
+                    i = 8;
+                else if(strncmp(text, "WT", 2) == 0 && strlen(text) == 2) 
+                    i = 9;
+                else if(strncmp(text, "TAG", 3) == 0 && strlen(text) == 3)
+                    i = 10;
+                else if(strncmp(text, "MONAT", 5) == 0 && strlen(text) == 5)
+                    i = 11;
+                else if(strncmp(text, "JAHR", 4) == 0 && strlen(text) == 4) 
+                    i = 12;
                 else
                     i = 0;
                 if(i)

@@ -54,7 +54,8 @@ private:
     CJsonNode *m_pJsonNode;
     void purge(CJsonNode * pJsonNode);
     CReadFile *m_pReadFile;
-    void NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp);   
+    void NodeWriteToFile(CJsonNode *pJsonNode, int iLevel, int iTyp); 
+    bool IsSpaceOrEnd(char ch);  
 };
 
 #endif /* CJSON_H */

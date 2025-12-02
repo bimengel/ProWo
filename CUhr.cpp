@@ -745,6 +745,18 @@ int COperUhr::resultInt()
             case 8: // Jahreswechsel
                 iRet = m_pUhr->JahresTakt();
                 break;
+            case 9: // Wochentag
+                iRet = m_pUhr->getWochenTag() + 1;
+                break;
+            case 10: // Tag des Monats
+                iRet = m_pUhr->getTag();
+                break;
+            case 11: // Monat
+                iRet = m_pUhr->getMonat();
+                break;
+            case 12: // Jahr
+                iRet = m_pUhr->getJahr();
+                break;
             default:
                 break;
         }
