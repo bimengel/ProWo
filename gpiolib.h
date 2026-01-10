@@ -1,7 +1,7 @@
 #ifndef gpiolib_h__
 #define gpiolib_h__
 
-extern int init_gpio(int on, int iPeriBase);
+extern int init_gpio(int on, int iPeriBase, int iI2CFrequency);
 extern void init_Uhr();
 extern void setmode_gpio(int pin, int mode);
 extern void setpullUpDown_gpio (int pin, int pud);
@@ -14,7 +14,6 @@ extern int BSC_Read(int len, int addr);
 extern int BSC_ReadReg(int len, int addr, int reg);
 extern int BSC_Write(int len, int addr, int value);
 extern int BSC_WriteReg(int len, int addr, int value, int reg);
-extern int BSC_WriteString(int len, int addr, unsigned char *ptr, int reg);
 extern void LCD_Init();
 extern void LCD_Clear();
 extern void LCD_CursorBlinken(int state);

@@ -179,85 +179,65 @@ void CBerechneEWAusg::SetState(int state)
     struct EWAusgEntity EWAusg;
     
 	ch = *m_cPtr;
-    state = state;
 	// Das Telegramm wird gesendet auch wenn der Zustand bereits richtig
 	// gesetzt ist
+    EWAusg.iNr = 0;
 	switch(m_EW) {
 	case 0x20: // CD in der Parameterdatei F
 		if(state)
 		{
-			if (!(ch & 0x20))
-				ch |= 0x20;
-			// C senden
+			ch |= 0x20; // F gesetzt
+            // C senden
             EWAusg.iNr = m_nr * 256 + 0x02;
 		}
 		else
 		{
-			if(ch & 0x20)
-			   ch &= 0xDF;
+			ch &= 0xDF; // F gelöscht
 			// D senden
             EWAusg.iNr = m_nr * 256 + 0x03;
 		}
 		break;
 	case 0x10: // AB in der Parameterdatei E
 		if(state)
-		{   if(!(ch & 0x10))
-			    ch |= 0x10;
+		{   
+			ch |= 0x10; // E gesetzt
             EWAusg.iNr = m_nr * 256 + 0x00;
 		}
 		else
-		{   if(ch & 0x10)
-			    ch &= 0xEF;
-        EWAusg.iNr = m_nr * 256 + 0x01;
+		{   
+			ch &= 0xEF; // E gelöscht
+            EWAusg.iNr = m_nr * 256 + 0x01;
 		}
 		break;
 	case 0x01: // a
 		if(state)
-		{   if(!(ch & 0x01))
-			    ch |= 0x01;
-		}
-		else
-		{   if(ch & 0x01)
-			    ch &= 0xFE;
-		}
-        EWAusg.iNr = m_nr * 256 + 0x00;
+        { 
+            ch |= 0x10; // E gesetzt
+            EWAusg.iNr = m_nr * 256 + 0x00;
+        }
 		break;		
 	case 0x02: // b
 		if(state)
-		{   if(!(ch & 0x02))
-			    ch |= 0x02;
-		}
-		else
-		{   if(ch & 0x02)
-			    ch &= 0xFD;
-		}
-        EWAusg.iNr = m_nr * 256 + 0x01;
+		{   
+            ch &= 0xEF; // E gelöscht
+            EWAusg.iNr = m_nr * 256 + 0x01;
+        }
 		break;		
 	case 0x04: // c
 		if(state)
-		{   if(!(ch & 0x04))
-			    ch |= 0x04;
-		}
-		else
-		{   if(ch & 0x04)
-			    ch &= 0xFB;
-		}
-        EWAusg.iNr = m_nr * 256 + 0x02;
+		{   
+            ch |= 0x20; // F gesetzt
+            EWAusg.iNr = m_nr * 256 + 0x02;
+        }
 		break;		
 	case 0x08: // d
 		if(state)
-		{   if(!(ch & 0x08))
-			    ch |= 0x08;
-		}
-		else
-		{   if(ch & 0x08)
-			    ch &= 0xF7;
-		}
-        EWAusg.iNr = m_nr * 256 + 0x03;
+        {
+			ch &= 0xDF; // F gelöscht
+            EWAusg.iNr = m_nr * 256 + 0x03;
+        }
 		break;	
-
-	default:
-        EWAusg.iNr = 0;
+    default:
 		break;
 	}
     if(EWAusg.iNr)

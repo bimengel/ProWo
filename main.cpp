@@ -31,7 +31,7 @@ pthread_mutex_t ext_mutexNodejs;
 
 static void signalhandler(int sig);
 void daemonShutdown();
-int daemonize();
+int setSignal();
 
 int pidFilehandle;
 bool bRunProgram;
@@ -48,28 +48,27 @@ CKeyBoard *pKeyBoard = NULL;
 
 int main(int argc, char *argv[])
 {   
-    // Meldungen in syslog (/var/log) schreiben
-    setlogmask(LOG_UPTO(LOG_INFO));
-    openlog("ProWo", LOG_CONS | LOG_PERROR, LOG_USER);
-    syslog(LOG_INFO, "starting up");
-
-    int button, j;
+    int button, i, j, iI2CFrequency = 0;
     CLCDDisplay *pLCDDisplay = NULL;
     pthread_t commThreadNodejs;
     pthread_t commThreadModbus;
     pthread_t commThread;
     bool bFirst = true;
-
     struct timespec start, finish; 
     long lDelay;
-    string str;
+    string str; 
+    char ch;
     
-// #ifdef DEBUG 
+    // Meldungen in syslog (/var/log) schreiben
+    setlogmask(LOG_UPTO(LOG_INFO));
+    openlog("ProWo", LOG_CONS | LOG_PERROR, LOG_USER);
+    syslog(LOG_INFO, "starting up");
+
     static char path[] = "/home/pi/";
     j = strlen(path);
     pProgramPath = new char[j+1];
     strcpy(pProgramPath, path); 
-//#else 
+
 /*   j = strlen(argv[0]);
     pProgramPath = new char[j+1];
     strcpy(pProgramPath, argv[0]);
@@ -86,10 +85,10 @@ int main(int argc, char *argv[])
             }
         }
     } */
-    daemonize();
+    setSignal();
     
     FILE * pFile;
-    char text[100];
+    char text[256];
     int iRaspberry;
     pFile = fopen("/sys/firmware/devicetree/base/model", "r");
     if(pFile == NULL)
@@ -97,14 +96,57 @@ int main(int argc, char *argv[])
         syslog(LOG_ERR, "cannot open /sys/firmware/devicetree/base/modul");
         exit(-1);
     }
-    fgets(text, 99, pFile);
+    fgets(text, 255, pFile);
     fclose(pFile);
 
     if(strncmp(text, "Raspberry Pi 3 Model B", 22) == 0)
         iRaspberry = 3;
     else
         iRaspberry = 2;
-    init_gpio(1, iRaspberry);
+    // I2C Frequenz einlesen
+
+    str = pProgramPath;
+    str += "/Standard/ProWo.config";
+    pFile = fopen(str.c_str(), "r"); 
+    if(pFile == NULL)
+    {
+        syslog(LOG_ERR, "cannot open /home/pi/Standard/ProWo.config");
+        exit(-1);
+    } 
+    for(;;)
+    {
+        if(fgets(text, 255, pFile) != NULL)
+        {
+            if(strncmp(text, "I2CFREQUENCY", 12) == 0) 
+            {
+                for(i=12, j=0; i < 256; i++)
+                {
+                    ch = text[i];
+                    if(ch == 0x20 || ch == ':')
+                        continue;
+                    if(isdigit(ch))
+                    {
+                        text[j] = ch;
+                        j++;
+                    }
+                    else
+                        break;
+                }
+                text[j] = 0;
+                iI2CFrequency = atoi(text);
+                break;
+            }  
+        }
+        else
+            break;         
+    }
+    fclose(pFile);	
+    if(!iI2CFrequency)
+    {
+        syslog(LOG_ERR, "I2CFREQUENCY not defined in ProWo.config");
+        exit(-1);
+    } 
+    init_gpio(1, iRaspberry, iI2CFrequency);
     LCD_Init();
     bRunProgram = true;
     pKeyBoard = new CKeyBoard;
@@ -218,7 +260,7 @@ int main(int argc, char *argv[])
     j = pthread_cancel(commThread);    
   
     // gpio zurücksetzen
-    init_gpio(0, 0);
+    init_gpio(0, 0, 0);
     
     delete pLCDDisplay;
     delete iogrp;
@@ -231,42 +273,12 @@ int main(int argc, char *argv[])
     return 0;
 }
 
-int daemonize()
+int setSignal()
 {
     pid_t pid;
     int i;
     char str[20];
 
-    // Create a new process
-/*    pid = fork();
-    if(pid < 0)
-    {   
-        syslog(LOG_ERR, "can't create process");
-        exit(EXIT_FAILURE);
-    }
-
-    if(pid > 0)
-    {
-        // Elternprozess beenden
-        exit(EXIT_SUCCESS);
-    }
-
-    // Kindprozess wenn pid = 0
-    // Create new session and process group
-    if(setsid() == -1)
-        return 0;
-
-    // Change file mode mask
-    umask(027);
-
-    // Set the working directory to the root directory
-    if(chdir("/") == -1)
-        return 0;
-
-    // close all open files
-    for(i=0; i < NR_OPEN; i++)
-        close(i);
-*/
     // redirect fd's 0,1,2 to /dev/null
     open("/dev/null", O_RDWR);  // 0 = stdin
     dup(0);						// 1 = stdout

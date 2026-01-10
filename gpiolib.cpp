@@ -20,7 +20,7 @@
 #define BSC_C_ST		(1 << 7)
 #define BSC_C_CLEAR		(1 << 4)
 #define BSC_C_READ		1
-#define CLEAR_WRITE		BSC_C_CLEAR
+#define CLEAR_WRITE	BSC_C_I2CEN | BSC_C_CLEAR
 #define START_READ 	BSC_C_I2CEN | BSC_C_ST | BSC_C_CLEAR | BSC_C_READ
 #define START_WRITE BSC_C_I2CEN | BSC_C_ST
 #define BSC_S_CLKT 		(1 << 9)
@@ -383,7 +383,7 @@ void setpullUpDown_gpio (int pin, int pud)
     delayMicroseconds (5) ;
 }
 
-int init_gpio (int on, int iRaspberry)
+int init_gpio (int on, int iRaspberry, int iI2CFrequency)
 {
     int iPeriBase, iFrequenz;
     if(on)
@@ -391,11 +391,11 @@ int init_gpio (int on, int iRaspberry)
         switch(iRaspberry) {
             case 3:
                 iPeriBase = 0x3F000000;
-                iFrequenz = 250000;
+                iFrequenz = 250000000;
                 break;
             default:
                 iPeriBase = 0x20000000;
-                iFrequenz = 150000;
+                iFrequenz = 150000000;
                 break;
         }
         gpio.addr_p = iPeriBase + 0x200000;
@@ -410,17 +410,12 @@ int init_gpio (int on, int iRaspberry)
         setmode_gpio(2, ALT0);
         setmode_gpio(3, ALT0);
 
-        /* I²C Frequenz auf 100 kHz setzen */
-        // Die Clock Frequenz beträgt 150 MHz
-        // Der default Wert beträgt 1500 und entspricht 100 kHz
         // Delay Dauer der Daten nach der SCL Flanke auf die Hälfte der Periode
         // 10 kHz über 102m bei Intec getestet (29/04/14)
-        // Raspberry PI 2 : 150000/Frequenz
+        // Raspberry PI 2 : Clockfrequenz 150 MHz
         //  Raspberry PI 3 B+ beträgt die Clockfrequenz 250 MHz
         int div;
-        div = iFrequenz/20; // 20 kHz 
-        // 10kHz eingestellt sonst Probleme bei beiden RTRM08 Bausteinen in Afst
-        // 20kHz 31.09.19 Test mit MainboardV2.0 (50 kHz ging nicht mehr !!!!)
+        div = iFrequenz/iI2CFrequency; 
         BSC1_DIV = div;
         div /= 4;
         div = div * 0x10000 + div;
@@ -493,10 +488,8 @@ int map_peripheral(struct bcm2835_peripheral *p)
         syslog(LOG_ERR, str);		
         return (-1);
     }
-
     // mmap GPIO 
     // Allocate MAP block
-
     p->map = mmap(
         NULL,
         BLOCK_SIZE,
@@ -512,12 +505,9 @@ int map_peripheral(struct bcm2835_peripheral *p)
         syslog(LOG_ERR, str);		
         return (-1);
     }
-
     // Always use volatile pointer!
     p->addr = (volatile unsigned *)p->map;
-
     return 0;
-   
 } // setup_io
 
 
@@ -569,16 +559,14 @@ void delayMicroseconds (unsigned int howLong)
     }
 }
 
-// Gibt 1 zurück wenn die Operation korrekt beendet wurde !!
+// Gibt den Wert timeout zurück wenn die Operation korrekt beendet wurde 
+//               0 zurück wenn die Operation noch nicht beendet ist
 int wait_i2c_done()
 {
     int timeout = 500;
     while(!(BSC1_S & BSC_S_DONE) && --timeout)
         usleep(100);
-    if(timeout == 0)
-        return 0;
-    else
-        return 1;
+    return(timeout);
 }
 
 int BSC_ReadReg(int len, int addr, int reg)
@@ -591,6 +579,7 @@ int BSC_Read(int len, int addr)
 {
     int i, ret=0;
 
+    ret = wait_i2c_done(); 
     BSC1_A = addr;
     BSC1_DLEN = len;
     BSC1_S = CLEAR_STATUS;
@@ -608,6 +597,7 @@ int BSC_Write(int len, int addr, int value)
 {	
     int i;
 
+    wait_i2c_done();
     // Status Register initialisieren
     BSC1_S = CLEAR_STATUS;
     // Control Register clear FIFO
@@ -619,29 +609,14 @@ int BSC_Write(int len, int addr, int value)
         value /= 256;
     }
     BSC1_C = START_WRITE;
-    return(wait_i2c_done());
-}
-
-int BSC_WriteString(int len, int addr, unsigned char *ptr, int reg)
-{	
-    int i;
-    // Status Register initialisieren
-    BSC1_S = CLEAR_STATUS;
-    // Control Register clear FIFO
-    BSC1_C = CLEAR_WRITE;
-    BSC1_A = addr; 
-    BSC1_DLEN = len + 1;
-    BSC1_FIFO = reg;
-    for(i=0; i < len; i++)
-        BSC1_FIFO = *(ptr + i);
-    BSC1_C = START_WRITE;
-    return(wait_i2c_done());
+    return 1;
 }
 
 int BSC_WriteReg(int len, int addr, int value, int reg)
 {	
     int i;
 
+    wait_i2c_done();
     // Status Register initialisieren
     BSC1_S = CLEAR_STATUS;
     // Control Register clear FIFO
@@ -654,9 +629,8 @@ int BSC_WriteReg(int len, int addr, int value, int reg)
             value /= 256;
     }
     BSC1_C = START_WRITE;
-    return(wait_i2c_done());
+    return 1;
 }	
-
 
 CBoardAddr::CBoardAddr()
 {
@@ -667,7 +641,6 @@ CBoardAddr::CBoardAddr()
     Reg = 0;
 }
 
-// 
 // Die Adressen werden je nach Mainboard (9544 od 9545) gespeichert
 void CBoardAddr::SetAddr(int inh1, int addr2, int inh2, int addr3, int reg)
 {
@@ -695,10 +668,8 @@ void CBoardAddr::SetAddr(int inh1, int addr2, int inh2, int addr3, int reg)
     Reg = reg;
 }
 
-
 void CBoardAddr::setI2C_gpio()
 {
-
     BSC_Write(1, Addr1, Inh1);
     BSC_Write (1, Addr2, Inh2);
 }
@@ -710,7 +681,6 @@ string strZweiStellen(int i)
     strRet = to_string(i);
     if(strRet.length() == 1)
         strRet.insert(0,"0"); 
-
     return strRet;
 }
 
@@ -720,7 +690,5 @@ string strDblRunden(double dblValue, int iAnz)
 
     strRet = to_string(dblValue);
     strRet = strRet.substr(0, strRet.find(".") + iAnz+1);
-
     return strRet;
-
 }

@@ -114,6 +114,7 @@ void COper::setOper(char *cptr, char *cptrLast, char operand)
 int COper::resultInt()
 {
     int ret=0;
+
     if(m_cptr != NULL)
     {	ret = *m_cptr & m_coperand;
         if(ret)
@@ -161,6 +162,17 @@ int COperW::resultInt()
     return ret;
 }
 
+int COperEWAusg::resultInt()
+{    int ret=0;
+
+    if(m_cptr != NULL)
+    {
+    	ret = *m_cptr & m_coperand;
+        if(ret)
+            ret = 1;
+    }
+    return ret;
+}
 //
 // Integer Merker
 //

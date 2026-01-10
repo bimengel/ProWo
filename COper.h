@@ -78,6 +78,12 @@ protected:
     char m_coperand;
 };
 
+class COperEWAusg: public COper
+{
+public:
+    virtual int resultInt();
+};
+
 // Einschalten
 class COperE : public COper
 {

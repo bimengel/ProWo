@@ -33,7 +33,7 @@
 #define RX_USERDATA1	5
 #define RX_ACK			6
 
-#define TX_STATUS		0x10
+#define TX_STATUS		0x10 
 #define TX_TRANSMIT		(1 << 7)
 
 #define TX_CHANNEL		0x11
@@ -330,7 +330,7 @@ void CIOGroup::Control(bool bStart)
     {	int channel, button;
         struct EWAusgEntity EWAusg;
         bool bSend = true;
-        
+
         EWAusg = m_EWAusgFifo.front();
         channel = EWAusg.iNr / 256;
         button = EWAusg.iNr % 256;
@@ -348,7 +348,7 @@ void CIOGroup::Control(bool bStart)
                 if(!m_iLastEWButton) // Ist noch ein Taster gedrückt
                 {
                     if(EWBoard_TransmitFinish(channel))
-                        EWBoard_Transmit(channel, button);		
+                        EWBoard_Transmit(channel, button);	                  	
                     else
                         bSend = false;
                 }
@@ -400,8 +400,7 @@ void CIOGroup::BerechneParameter(int iTime)
     for(i=0; i < res; i++)
         m_pcSEingLast[i] = m_pcSEing[i];
 
-    // Für alle EWEAxx, EWEBxx, EWECxx und EWEDxx Eingänge Status auf 0 setzen
-    // Der Test auf den Wert entspricht dann einer Flanke
+    // Für alle EW (EasyWave) - Eingänge den aktuellen Wert als letzten setzen
     res = GetEWEingTotAnz();
     for(i=0; i < res; i++)
         m_pEWEingLast[i] = m_pEWEing[i];
@@ -516,7 +515,6 @@ void CIOGroup::InitGroup()
         // der Mainboard-Type muss bekannt sein damit die Uhrzeit gelesen werden kann;
         PreReadConfig(pProgramPath);
         m_pUhr = new CUhr;
-
         
         // ProWo.config einlesen
         ReadConfig(pProgramPath);
@@ -2487,6 +2485,8 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                         m_pReadFile->Error(11);
             }            
+            else if(strncmp(buf, "I2CFREQUENCY", 12) == 0 && strlen(buf) == 12)
+                continue;
             else
                 m_pReadFile->Error(7);
         }
@@ -3024,22 +3024,22 @@ int CIOGroup::EW_SetReceive (CBoardAddr *addr)
 bool CIOGroup::EWBoard_TransmitFinish(int channel)
 {
     CBoardAddr *addr;
-    int ret;
-    bool bRet= false;
+    int ret, i;
+    bool bRet= true;
 
-    if(channel > 0 && channel <= m_EWAnzBoard*EWANZAHLCHANNEL)
+    if(m_EWAnzBoard)
     {
-        channel--;
-        addr = &m_pEWBoardAddr[channel/EWANZAHLCHANNEL];		
-        addr->setI2C_gpio();
-        ret = BSC_ReadReg(1, addr->Addr3, TX_STATUS);
-        if(ret & TX_TRANSMIT)
-            bRet = false;
-        else
-            bRet = true;
+        for(i=0; i < m_EWAnzBoard; i++)
+        {
+            addr = &m_pEWBoardAddr[i];		
+            addr->setI2C_gpio();
+            ret = BSC_ReadReg(1, addr->Addr3, TX_STATUS);
+            if(ret & TX_TRANSMIT)
+                bRet = false;
+        }
     }
     else if(channel >  m_EWAnzBoard*EWANZAHLCHANNEL && channel <= GetEWAusgTotAnz())
-        bRet = true;
+        bRet = true;  // mit USB-Stick muss der Test noch eingefügt werden !!!!
     return bRet;
 }
 

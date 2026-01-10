@@ -149,8 +149,16 @@ void CConfigCalculator::number()
             ew = toupper(cur());
             m_cPtr++;
         }
-        if(ew < 'A' || ew > 'F')
-            m_pReadFile->Error(15);
+        if(strncmp(text, "FE", 2) == 0)
+        {
+            if(ew < 'A' || ew > 'F')
+                m_pReadFile->Error(15);
+        }
+        else
+        {
+            if(ew < 'E' || ew > 'F')
+                m_pReadFile->Error(15);            
+        }
 
     }
 
@@ -250,6 +258,42 @@ void CConfigCalculator::number()
                 m_pReadFile->Error(19);
 
         }
+        // EasyWave Ausgänge
+        else if(strncmp(text, "FA", 2) == 0 && strlen(text) == 2)
+        {	
+            if(nr <= m_pIOGroup->GetEWBoardAnz() + m_pIOGroup->GetEWUSBAusgAnz())
+            {   
+                COper *pOper;
+                char ch;
+
+                switch(ew) {
+                case 'A':
+                    ch = 0x01;
+                    break;
+                case 'B':
+                    ch = 0x02;
+                    break;
+                case 'C':
+                    ch = 0x04;
+                    break;
+                case 'D':
+                    ch = 0x08;
+                    break;
+                case 'E':
+                    ch = 0x10;
+                    break;
+                case 'F':
+                    ch = 0x20;
+                    break;
+                }
+                pOper = new COperEWAusg;                
+                pOper->setType(1);
+                pOper->setOper (m_pIOGroup->GetEWAusgAddress(nr), NULL, ch);
+                AddOperToList(pOper);   
+            }  
+            else
+                m_pReadFile->Error(19);  
+        }         
         // Eingänge
         else if(strncmp(text, "E", 1) == 0 && strlen(text) == 1)
         {
