@@ -14,6 +14,8 @@
 #include "ProWo.h"
 
 CSonosEntity::CSonosEntity() {
+    m_strID = "";
+    m_strName = "";
 }
 
 CSonosEntity::~CSonosEntity() {
@@ -23,7 +25,6 @@ CSonos::CSonos(CIOGroup *pIOGroup) {
     
     LesDatei();
     
-    m_pGroupEntity = NULL;
     m_pPlayerEntity = NULL;
     m_pFavoritesEntity = NULL;
     m_iHousehold = 1;
