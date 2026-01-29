@@ -645,6 +645,9 @@ void CIOGroup::InitGroup()
         case 10: // History
             str1 = "History: ";
             break;
+        case 13: // Sonos
+            str1 = "Sonos:";
+            break;
         default:
             zeile = 0;
             str1 = "Unknown Error!!";
@@ -1117,6 +1120,9 @@ void CIOGroup::InitGroup()
             break;
         case 153: // TEST 2x definiert 
             str3 = "TEST two times";
+            break;
+        case 154:
+            str3 = "Invalid Param";
             break;
         default:
             str3 = "error not def.!";

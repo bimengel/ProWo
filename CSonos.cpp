@@ -25,25 +25,157 @@ CSonos::CSonos(CIOGroup *pIOGroup) {
     
     LesDatei();
     
+    m_pGroupEntity = NULL;
     m_pPlayerEntity = NULL;
     m_pFavoritesEntity = NULL;
+    m_pPlaylistEntity = NULL;
     m_iHousehold = 1;
     m_iAnzGroup = 0;
     m_iAnzPlayer = 0;
-    m_iAnzFavorites = 0;
+    m_iAnzPlaylist = 0;
+    m_iAnzFavorite = 0;
     m_pCurl = curl_easy_init();
     m_pIOGroup = pIOGroup;
     m_iStep = 0;
     m_iDelay = 0;
-    m_iSonosACID = -1;
-
     pthread_mutex_init(&m_mutexSonosFifo, NULL); 
-
 }
 
+void CSonos::Control(time_t iUhrzeit)
+{
+    int iError = 0;
+
+   
+    if(iUhrzeit % 86400 == 7200) // um 4 Uhr Nachts iUhrzeit entspricht der Greenwich-Uhrzeit
+    {
+        m_iStep = 0;
+        m_iDelay = 0;
+    }
+    if(m_iDelay)
+    {
+        if(iUhrzeit > m_iDelay + 300) // wenn ein Fehler aufgetreten ist, Initialisierung nach 5 Minuten neustarten
+        {
+            m_iStep = 0;
+            m_iDelay = 0;
+        }
+    }
+    else
+    {
+        switch(m_iStep) {
+        case 0: // Refreshtoken aufrufen
+            iError = RefreshToken();
+            m_SonosAktionEntity.m_iState = -1;
+            break;
+        case 1: // ReadHouseholds aufrufen
+            iError = ReadHouseholds();
+            break;
+        case 2: // ReadGroups aufrufen 
+            iError = ReadGroups();
+            break;
+        case 3:
+            iError = ReadFavorites();
+            break;
+        case 4:
+            iError = ReadPlaylists();
+            break;            
+        case 5: // Operation ausführen
+            iError = ExecuteOperation();
+            break;
+        default:
+            iError = 1;
+            break;
+        }
+        if(iError)
+            m_iDelay = iUhrzeit;
+    }
+}
+
+int CSonos::ExecuteOperation()
+{
+    int iRet=0, i, iCommand, iState, iVol;
+    string str;
+
+    pthread_mutex_lock(&m_mutexSonosFifo);  
+    if(m_SonosAktionEntity.m_iState == -1 && !m_SonosFifo.empty())
+    {
+        m_SonosAktionEntity = m_SonosFifo.front();
+        m_SonosFifo.pop();
+               
+        str = m_strGroupConfig[m_SonosAktionEntity.m_iNrGroup - 1];
+        m_strID = "";
+        for(i=0; i < m_iAnzGroup; i++)
+        {
+            if(str.compare(m_pGroupEntity[i].m_strName) == 0)
+                m_strID = m_pGroupEntity[i].m_strID;
+        }
+        if(m_strID.empty())
+        {
+            // Gruppe nicht gefunden, also alles neu einlesen!
+            syslog(LOG_ERR, "Sonos Execution: group not found!");
+            return 1;
+        }    
+    }
+    pthread_mutex_unlock(&m_mutexSonosFifo);    
+    iCommand = m_SonosAktionEntity.m_iState % 256;
+    iState = m_SonosAktionEntity.m_iState / 256;
+    switch(iCommand) {
+    case -1: // kein Kommando
+        break;
+    case 0: // Ausschalten
+        iRet = Execute(0, 0);
+        iCommand = -1;
+        break;
+    case 1: // Einschalten
+        // wird zweimal durchlaufen wenn einschalten mit Lautstärke 
+        if(iState) // mit Lautstärke
+        {
+            iRet = Execute(4, iState);  
+            iState = 0;
+        }
+        else
+        {
+            iRet = Execute(1, 0);
+            iCommand = -1;
+        }
+        break;
+    case 2: // Favoriten 
+        iRet = Execute(2, iState);
+        iCommand = -1;
+        break;
+    case 3: // Playlist setzen
+        iRet = Execute(3, iState);
+        iCommand = -1;
+        break;
+    case 4: // Lautstärke setzen
+        iRet = Execute(4, iState);
+        iCommand = -1;
+        break;
+    case 5: // Lautstärke erhöhen
+    case 6: // Lautstärke niedriger    
+        if(iCommand == 6)
+            iState = -iState;
+        iRet = Execute(5, iState);
+        iCommand = -1;
+        break;
+    default:
+        iCommand = -1;
+        iRet = 1;
+        break;
+    }
+    if(iCommand == -1)
+        m_SonosAktionEntity.m_iState = -1;
+    else
+        m_SonosAktionEntity.m_iState = iState * 256 + iCommand;
+    return iRet;
+}
 int CSonos::GetAnzGroupConfig()
 {
-    return m_iAnzGroupConfig;
+    return m_strGroupConfig.size();
+}
+
+int CSonos::GetAnzFavoriteConfig()
+{
+    return m_strFavoriteConfig.size();
 }
 
 CSonos::~CSonos() {
@@ -68,6 +200,11 @@ CSonos::~CSonos() {
         delete [] m_pFavoritesEntity;
         m_pFavoritesEntity = NULL;
     }
+    if(m_pPlaylistEntity != NULL)
+    {
+        delete [] m_pPlaylistEntity;
+        m_pPlaylistEntity = NULL;
+    }
 
     pthread_mutex_destroy(&m_mutexSonosFifo);       
 }
@@ -81,7 +218,6 @@ size_t CSonos::write_data(void *contents, size_t size, size_t nmemb, void *userp
 int CSonos::RefreshToken()
 {
     string str, strError;
-    string strReadBuffer;
     CJson *pJson = new CJson;
     CJsonNodeValue pJsonNodeValue;    
     int iErr;
@@ -112,7 +248,7 @@ int CSonos::RefreshToken()
 
         // Empfang
         curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);
+        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);
 
         // Perform the request, res will get the return code 
         res = curl_easy_perform(m_pCurl);            
@@ -124,15 +260,14 @@ int CSonos::RefreshToken()
         }
         else
         {
-            bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(), &iErr);
-
+            bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(), &iErr);
             if(bSuccess)
             {
                 if(m_pIOGroup->GetTest() == 4)
                     pJson->WriteToFile("Refreshtoken", 14, true);                
                 pJson->get((char *)"access_token", &pJsonNodeValue);
                 if(pJsonNodeValue.m_iTyp == 4)
-                    m_strToken = pJsonNodeValue.m_strValue;
+                    m_strAuthorization = "Authorization: Bearer " + pJsonNodeValue.m_strValue;
                 else 
                 {
                     strError = "SONOS RefreshToken(3): access_token not found!";
@@ -155,7 +290,7 @@ int CSonos::RefreshToken()
             }
             else
             {
-                strError = "SONOS RefreshToken (5): " + strReadBuffer + ", JSON error at pos " + to_string(iErr);
+                strError = "SONOS RefreshToken (5): " + m_strReadBuffer + ", JSON error at pos " + to_string(iErr);
                 iRet = 5;
                 break;
             }
@@ -188,7 +323,6 @@ void CSonos::LesDatei()
     BYTE bAll = 0;
 	pReadFile = new CReadFile(); 
     pReadFile->OpenRead (pProgramPath, 13);   
-    m_iAnzGroupConfig = 0;
 
     while(true)
     {
@@ -221,12 +355,16 @@ void CSonos::LesDatei()
             }
             else if(strKey.compare("Group") == 0)
                 m_strGroupConfig.push_back(str);
+            else if(strKey.compare("Favorite") == 0)
+                m_strFavoriteConfig.push_back(str);
+            else if(strKey.compare("Playlist") == 0)
+                m_strPlaylistConfig.push_back(str);
+            else
+                pReadFile->Error(154);
         }
         else
             break;
-        
     }
-    m_iAnzGroupConfig = m_strGroupConfig.size();
     
     if(bAll != 0x0F)
     {
@@ -247,10 +385,9 @@ void CSonos::LesDatei()
 
 int CSonos::ReadHouseholds()
 {
-    string str, strError;
+    string strError;
     int iRet = 0;
     CURLcode res;   
-    string strReadBuffer;
     struct curl_slist* headers = NULL;
     bool bSuccess;
     CJson *pJson = new CJson;
@@ -270,13 +407,12 @@ int CSonos::ReadHouseholds()
 
         // Senden
         headers = curl_slist_append(headers, "Content_Type:application/json");
-        str = "Authorization: Bearer " + m_strToken;
-        headers = curl_slist_append(headers, str.c_str());
+        headers = curl_slist_append(headers, m_strAuthorization.c_str());
         curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
 
         // Empfang
         curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);    
+        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);    
 
         // Perform the request, res will get the return code 
         res = curl_easy_perform(m_pCurl);            
@@ -287,7 +423,7 @@ int CSonos::ReadHouseholds()
         }
         else
         {   
-            bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(), &iErr);
+            bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(), &iErr);
             if(bSuccess)
             {
                 if(m_pIOGroup->GetTest() == 4)
@@ -330,9 +466,8 @@ int CSonos::ReadGroups()
     CJsonNodeValue pJsonNodeValue;     
     CURLcode res;   
     struct curl_slist* headers = NULL;
-    string strReadBuffer;
     string strName, strID;
-    string strBuffer, strError;
+    string strError;
     int iErr;
     bool bSuccess;
    
@@ -345,18 +480,17 @@ int CSonos::ReadGroups()
         curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
 
         // Url
-        strBuffer = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/groups";
-        curl_easy_setopt(m_pCurl, CURLOPT_URL, strBuffer.c_str());    
+        m_strUrl = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/groups";
+        curl_easy_setopt(m_pCurl, CURLOPT_URL, m_strUrl.c_str());    
 
         headers = curl_slist_append(headers, "Content_Type:application/json");
         headers = curl_slist_append(headers, "charset=utf-8");
-        strBuffer = "Authorization: Bearer " + m_strToken;
-        headers = curl_slist_append(headers, strBuffer.c_str());
+        headers = curl_slist_append(headers, m_strAuthorization.c_str());
         curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
 
         // Empfang
         curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);    
+        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);    
 
         // Perform the request, res will get the return code 
         res = curl_easy_perform(m_pCurl);            
@@ -368,7 +502,7 @@ int CSonos::ReadGroups()
         }
         else
         {
-            bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(), &iErr);
+            bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(), &iErr);
             if(bSuccess)
             {
                 if(m_pIOGroup->GetTest() == 4)
@@ -394,7 +528,7 @@ int CSonos::ReadGroups()
                     m_pGroupEntity[i].m_strName = strName;
                 }
                 j = pJson->get((char *)"players",  &pJsonNodeValue)->size();
-                  if(m_pPlayerEntity != NULL)
+                if(m_pPlayerEntity != NULL)
                     delete [] m_pPlayerEntity;
                 m_pPlayerEntity = new CSonosEntity[j];
                 m_iAnzPlayer = j;
@@ -412,7 +546,7 @@ int CSonos::ReadGroups()
             }
             else
             {
-                strError = "SONOS ReadGroups (5): JSON error at pos " + to_string(iErr) + ", " + strReadBuffer;
+                strError = "SONOS ReadGroups (5): JSON error at pos " + to_string(iErr) + ", " + m_strReadBuffer;
                 iRet = 5;
                 break;
             }
@@ -432,14 +566,13 @@ int CSonos::ReadFavorites()
     int i, j, iRet = 0;
     CURLcode res;   
     struct curl_slist* headers = NULL;
-    string strReadBuffer;
     string strName, strID;
     CJson *pJson = new CJson;
     CJsonNode *pJsonNode;
     CJsonNodeValue pJsonNodeValue;  
     int iErr;
     bool bSuccess;
-    string str, strError;
+    string strError;
 
     while(true)
     {
@@ -450,19 +583,18 @@ int CSonos::ReadFavorites()
         curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
 
         // Urlm_strHousehold
-        str = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/favorites";
-        curl_easy_setopt(m_pCurl, CURLOPT_URL, str.c_str());    
+        m_strUrl = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/favorites";
+        curl_easy_setopt(m_pCurl, CURLOPT_URL, m_strUrl.c_str());    
 
         headers = curl_slist_append(headers, "Content_Type:application/json");
         headers = curl_slist_append(headers, "charset=utf-8");
-        str =  "Authorization: Bearer "  + m_strToken;
-        headers = curl_slist_append(headers, str.c_str());
+        headers = curl_slist_append(headers, m_strAuthorization.c_str());
         curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
 
 
         // Empfang
         curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);    
+        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);    
 
         // Perform the request, res will get the return code 
         res = curl_easy_perform(m_pCurl);            
@@ -475,7 +607,7 @@ int CSonos::ReadFavorites()
         else
         {
             m_iStep++;
-            bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(),  &iErr);
+            bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(),  &iErr);
             if(bSuccess)
             {
                 if(m_pIOGroup->GetTest() == 4)
@@ -488,7 +620,7 @@ int CSonos::ReadFavorites()
                     m_pFavoritesEntity = NULL;
                 }
                 m_pFavoritesEntity = new CSonosEntity[j];
-                m_iAnzFavorites = j;
+                m_iAnzFavorite = j;
                 for(i=0; i < j; i++)
                 {
                     pJsonNode = pJson->get((char *)"items",  &pJsonNodeValue)
@@ -503,7 +635,7 @@ int CSonos::ReadFavorites()
             }
             else
             {
-                strError = "ReadFavorites (5) : JSON error at " + to_string(iErr) + ", " + strReadBuffer;
+                strError = "ReadFavorites (5) : JSON error at " + to_string(iErr) + ", " + m_strReadBuffer;
                 iRet = 5;
                 break;
             }
@@ -523,14 +655,13 @@ int CSonos::ReadPlaylists()
     int i, j, iRet = 0;
     CURLcode res;   
     struct curl_slist* headers = NULL;
-    string strReadBuffer;
     string strName, strID;
     CJson *pJson = new CJson;
     CJsonNode *pJsonNode;
     CJsonNodeValue pJsonNodeValue;  
     int iErr;
     bool bSuccess;
-    string str, strError;
+    string strError;
 
     while(true)
     {
@@ -541,55 +672,58 @@ int CSonos::ReadPlaylists()
         curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
 
         // Urlm_strHousehold
-        str = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/playlists";
-        curl_easy_setopt(m_pCurl, CURLOPT_URL, str.c_str());    
+        m_strUrl = "https://api.ws.sonos.com/control/api/v1/households/" + m_strHousehold + "/playlists";
+        curl_easy_setopt(m_pCurl, CURLOPT_URL, m_strUrl.c_str());    
 
         headers = curl_slist_append(headers, "Content_Type:application/json");
         headers = curl_slist_append(headers, "charset=utf-8");
-        str =  "Authorization: Bearer "  + m_strToken;
-        headers = curl_slist_append(headers, str.c_str());
+        headers = curl_slist_append(headers, m_strAuthorization.c_str());
         curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
-
 
         // Empfang
         curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);    
+        curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);    
 
         // Perform the request, res will get the return code 
         res = curl_easy_perform(m_pCurl);            
         if(res != CURLE_OK)
         {
-            strError = "ReadPlaylists (3) : " +  string(m_curlErrorBuffer);
+            strError = "Playlists (3) : " +  string(m_curlErrorBuffer);
             iRet = 3;
             break;
         }
         else
         {
             m_iStep++;
-            bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(),  &iErr);
+            bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(),  &iErr);
             if(bSuccess)
             {
                 if(m_pIOGroup->GetTest() == 4)
                     pJson->WriteToFile("Playlists", 14, false);  
                 pJsonNode = pJson->get((char *)"playlists",  &pJsonNodeValue);
-                j = pJsonNode->size();                    
+                j = pJsonNode->size();    
+                if(m_pPlaylistEntity != NULL)
+                {
+                    delete [] m_pPlaylistEntity;
+                    m_pPlaylistEntity = NULL;
+                }
+                m_pPlaylistEntity = new CSonosEntity[j];
+                m_iAnzPlaylist = j;
                 for(i=0; i < j; i++)
                 {
                     pJsonNode = pJson->get((char *)"playlists",  &pJsonNodeValue)
                                     ->get(i, &pJsonNodeValue);
                     pJsonNode->get((char *)"name", &pJsonNodeValue);
                     strName = pJsonNodeValue.asString();
-                    if(strName.compare("ProWo") == 0)
-                    {   pJsonNode->get((char *)"id", &pJsonNodeValue);  
-                        m_iSonosACID = atoi(pJsonNodeValue.asString().c_str());
-                        break;
-                    }
-                }                      
-                                               
+                    pJsonNode->get((char *)"id", &pJsonNodeValue);                    
+                    strID = pJsonNodeValue.asString();
+                    m_pPlaylistEntity[i].m_strID = strID;
+                    m_pPlaylistEntity[i].m_strName = strName;
+                }                                     
             }
             else
             {
-                strError = "ReadPlaylists (5) : JSON error at " + to_string(iErr) + ", " + strReadBuffer;
+                strError = "Playlists (5) : JSON error at " + to_string(iErr) + ", " + m_strReadBuffer;
                 iRet = 5;
                 break;
             }
@@ -605,85 +739,93 @@ int CSonos::ReadPlaylists()
 
 }
 
-int CSonos::Execute(string strGroupID, int iState)
+int CSonos::Execute(int iAktion, int iState)
 {
-    string strError, strUrl, strData, strAuthorization;
-    CURLcode res;   
-    struct curl_slist* headers = NULL;
-    int iWert, iAktion, len;
-    string strReadBuffer;
+    string strError, strData, str;
+    int len;
     CJson *pJson = new CJson;
     CJsonNode *pJsonNode;
-    CJsonNodeValue JsonNodeValue;     
-    bool bPost = true;
+    CJsonNodeValue JsonNodeValue;  
+    CURLcode res;   
     bool bSuccess;
-    int iErr;
-    int iRet = -1;
+    int iErr, j;
+    int iRet = 0;
 
+    m_pCurl = curl_easy_init();
     strData.clear();
-    iWert = iState / 256;
-    iAktion = iState % 256;
+    m_strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + m_strID;
     switch(iAktion) {
         case 0: // Ausschalten
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/playback/pause";
+            m_strUrl += "/playback/pause";
             break;
         case 1: // Einschalten
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/playback/play";
+            m_strUrl += "/playback/play";
             break;
         case 2: // Favorite setzen
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/favorites";
-            strData = "{\"favoriteId\":\"" + to_string(iWert-1) + "\",\"action\":\"REPLACE\"}";           
+            m_strUrl += "/favorites";
+            str = m_strFavoriteConfig.at(iState-1);
+            m_strID = "";
+            j = m_iAnzFavorite;
+            for(int i=0; i < j; i++)
+            {
+                if(str.compare(m_pFavoritesEntity[i].m_strName) == 0)
+                    m_strID = m_pFavoritesEntity[i].m_strID;
+            }
+            if(m_strID.empty())
+            {
+                strError = "Favorite \"" + str +"\" not in the list";
+                syslog(LOG_ERR, strError.c_str());
+                return 0;
+            }
+            strData = "{\"favoriteId\":\"" + m_strID + "\",\"action\":\"PLAY_NOW\"," +
+                        "\"playOnCompletion\":true}";           
             break;
-        case 3: // iWert = Lautstärke setzen
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/groupVolume";
-            strData = "{\"volume\":" + to_string(iWert) + "}";
+        case 3: // Playlist setzen
+            m_strUrl += "/playlists"; 
+            j = m_strPlaylistConfig.size();
+            if(iState < 1 || iState > j)
+            {
+                strError = "Incorrect number for Playlist: " + to_string(iState);
+                syslog(LOG_ERR, strError.c_str());
+                return 0;
+            }
+            str = m_strPlaylistConfig.at(iState-1);
+            m_strID = "";
+            j = m_iAnzPlaylist;
+            for(int i=0; i < j; i++)
+            {
+                if(str.compare(m_pPlaylistEntity[i].m_strName) == 0)
+                    m_strID = m_pPlaylistEntity[i].m_strID;
+            }
+            if(m_strID.empty())
+            {
+                strError = "Playlist \"" + str +"\" not in the list";
+                syslog(LOG_ERR, strError.c_str());
+                return 0;
+            }
+            strData = "{\"playlistId\":\"" + m_strID + "\",\"playOnCompletion\":true," +
+                        "\"playModes\":{\"repeat\":true,\"repeatOne\":false,\"shuffle\":true,\"crossfade\":false}," +
+                        "\"action\":\"PLAY_NOW\"}";
             break;
-        case 4: // Lautstärke erhöhen
-            break;
-        case 5: // Lautstärke mindern
-            break;
-        case 6: // Playlist ProWo setzen
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/playlists";    
-            strData = "{\"playlistId\":\"" + to_string(m_iSonosACID) + "\",\"playOnCompletion\":true," +
-                        "\"playModes\":{\"repeat\":true,\"repeatOne\":false,\"shuffle\":false,\"crossfade\":false}," +
-                        "\"action\":\"REPLACE\"}";
-            break;
+        case 4: // iWert = Lautstärke setzen
+            m_strUrl += "/groupVolume";
+            strData = "{\"volume\":" + to_string(iState) + "}";
+            break;    
+        case 5:
+            m_strUrl += "/groupVolume/relative";
+            strData = "{\"volumeDelta\":" + to_string(iState) + "}";
+            break;        
         case 100: // Lautsärke lesen
-            strUrl = "https://api.ws.sonos.com/control/api/v1/groups/" + strGroupID + "/groupVolume";
-            bPost = false;
+            m_strUrl += "/groupVolume";
             break;
         default:
             strError = "SONOS Paramer, action (" + to_string(iAktion) + "incorrect!";
             syslog(LOG_ERR, strError.c_str());
-            return -1;
+            return 0;
             break;
     }
-    curl_easy_setopt(m_pCurl, CURLOPT_SSL_VERIFYPEER, 0L);
-    curl_easy_setopt(m_pCurl, CURLOPT_SSL_VERIFYHOST, 0L); 
-    // Timeout auf 10 Sekunden
-    curl_easy_setopt(m_pCurl, CURLOPT_CONNECTTIMEOUT, 10L);   
-    curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
 
-    // Url
-    curl_easy_setopt(m_pCurl, CURLOPT_URL, strUrl.c_str());    
-
-    // Header setzen
-    headers = curl_slist_append(headers, "Content-Type:application/json;charset=utf-8");
-    strAuthorization = "Authorization: Bearer " + m_strToken;
-    headers = curl_slist_append(headers, strAuthorization.c_str());
-    curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
-
-    // Data (body)
-    if(bPost)
-        curl_easy_setopt(m_pCurl, CURLOPT_POSTFIELDS, strData.c_str());
-    else
-        curl_easy_setopt(m_pCurl, CURLOPT_HTTPGET, 1L);
-
-    curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
-    curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&strReadBuffer);
-
-    // Perform the request, res will get the return code 
-    res = curl_easy_perform(m_pCurl);            
+    res = CurlPerform(strData);           
     if(res != CURLE_OK)
     {
         strError = "SONOS Verwalt (1) / " + string( m_curlErrorBuffer);
@@ -692,7 +834,7 @@ int CSonos::Execute(string strGroupID, int iState)
     }
     else
     {   
-        bSuccess = pJson->parse((char *)strReadBuffer.c_str(), strReadBuffer.length(), &iErr);
+        bSuccess = pJson->parse((char *)m_strReadBuffer.c_str(), m_strReadBuffer.length(), &iErr);
         if(bSuccess)
         {   
             pJson->get((char *)"fault", &JsonNodeValue);
@@ -707,27 +849,18 @@ int CSonos::Execute(string strGroupID, int iState)
                 pJson->get((char *)"errorCode", &JsonNodeValue);
                 if(JsonNodeValue.m_iTyp != 0) // vorhanden also Fehler
                 {
-                    strError = "SONOS error (errorCode): " + JsonNodeValue.asString();
+                    strError = "SONOS error (errorCode): " + JsonNodeValue.asString() +
+                        " iAktion = " + to_string(iAktion) + " iState = " + to_string(iState);
                     syslog(LOG_ERR, strError.c_str());
                 }
-                else
-                {
-                    switch (iAktion) {
-                    case 100:
-                        pJson->get((char *)"volume", &JsonNodeValue);
-                        iRet = JsonNodeValue.asInt();
-                        break;
-                    default:
-                        iRet = 0;
-                        break;
-                    }
-                }
+                else 
+                    iRet = 0;
             }
         }
         else
         {   
-            strError = "SONOS JSON error at pos " + to_string(iErr) + "(curl),  groupID (" + strGroupID + "), action " +
-                            to_string(iAktion) + ": " + strReadBuffer;
+            strError = "SONOS JSON error at pos: " + to_string(iErr) + "(curl), ID: " + m_strID + ", action: " +
+                            to_string(iAktion) + " ReadBuffer: " + m_strReadBuffer;
             syslog(LOG_ERR, strError.c_str());
         }
     }
@@ -735,99 +868,42 @@ int CSonos::Execute(string strGroupID, int iState)
     return iRet;
 }
 
-void CSonos::Control(time_t iUhrzeit)
+CURLcode CSonos::CurlPerform(string strData)
 {
-    int i, iVol, iError = 0;
-    struct SonosAktionEntity Entity;
-    string strGroup, strID;
-   
-    if(iUhrzeit % 86400 == 7200) // um 4 Uhr Nachts iUhrzeit entspricht der Greenwich-Uhrzeit
+    CURLcode res;   
+    struct curl_slist* headers = NULL;
+
+    curl_easy_setopt(m_pCurl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(m_pCurl, CURLOPT_SSL_VERIFYHOST, 0L); 
+    // Timeout auf 10 Sekunden
+    curl_easy_setopt(m_pCurl, CURLOPT_CONNECTTIMEOUT, 10L);   
+    curl_easy_setopt(m_pCurl, CURLOPT_ERRORBUFFER, m_curlErrorBuffer);
+
+    // Url
+    curl_easy_setopt(m_pCurl, CURLOPT_URL, m_strUrl.c_str());    
+
+    // Header setzen
+    headers = curl_slist_append(headers, "Content-Type:application/json;charset=utf-8");
+    headers = curl_slist_append(headers, m_strAuthorization.c_str());
+    curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
+
+    // Data (body)
+    if(strData.empty())
+        curl_easy_setopt(m_pCurl, CURLOPT_HTTPGET, 1L);
+    else   
     {
-        m_iStep = 0;
-        m_iDelay = 0;
+        curl_easy_setopt(m_pCurl, CURLOPT_POST, 1L);
+        curl_easy_setopt(m_pCurl, CURLOPT_POSTFIELDS, strData.c_str());
     }
-    if(m_iDelay)
-    {
-        if(iUhrzeit > m_iDelay + 300) // wenn ein Fehler aufgetreten ist, Initialisierung nach 5 Minuten neustarten
-        {
-            m_iStep = 0;
-            m_iDelay = 0;
-        }
-    }
-    else
-    {
-        switch(m_iStep) {
-            case 0: // Refreshtoken aufrufen
-                iError = RefreshToken();
-                break;
-            case 1: // ReadHouseholds aufrufen
-                iError = ReadHouseholds();
-                break;
-            case 2: // ReadGroups aufrufen 
-                iError = ReadGroups();
-                break;
-            case 3:
-                iError = ReadFavorites();
-                break;
-            case 4:
-                iError = ReadPlaylists();
-                break;            
-            case 5: // Operation ausführen
-                pthread_mutex_lock(&m_mutexSonosFifo);  
-                if(!m_SonosFifo.empty())
-                {
-                    Entity = m_SonosFifo.front();
-                    m_SonosFifo.pop();
-                    pthread_mutex_unlock(&m_mutexSonosFifo);                  
-                    strGroup = m_strGroupConfig[Entity.m_iNrGroup - 1];
-                    strID = "";
-                    for(i=0; i < m_iAnzGroup; i++)
-                    {
-                        if(strGroup.compare(m_pGroupEntity[i].m_strName) == 0)
-                            strID = m_pGroupEntity[i].m_strID;
-                    }
-                    if(strID.empty())
-                    {
-                        // Gruppe nicht gefunden, also alles neu einlesen!
-                        syslog(LOG_ERR, "Sonos Execution: group not found!");
-                        iError = 1;
-                        break;
-                    }    
-                    i = Entity.m_iState % 256;
-                    if(i == 4 || i == 5)
-                    {
-                        iVol =  Execute(strID, 100);
-                        if(iVol < 0)
-                        {
-                            syslog(LOG_ERR, "Sonos Execution: volume not defined!");
-                            iError = 1;
-                            break;
-                        }
-                        if(i == 4)
-                            iVol += Entity.m_iState / 256;
-                        else
-                            iVol -= Entity.m_iState / 256;
-                        if(iVol > 100)
-                            iVol = 100;
-                        if(iVol < 0)
-                            iVol = 0;
-                        Entity.m_iState = iVol * 256 + 3;
-                    }
-                    if(Execute(strID, Entity.m_iState) == -1)
-                    {
-                        syslog(LOG_ERR, "Sonos Execution error");
-                        iError = 1;
-                    }
-                }
-                else
-                    pthread_mutex_unlock(&m_mutexSonosFifo);              
-                break;
-            default:
-                break;
-        }
-        if(iError)
-            m_iDelay = iUhrzeit;
-    }
+
+    // write data
+    curl_easy_setopt(m_pCurl, CURLOPT_WRITEFUNCTION, &CSonos::write_data);
+    curl_easy_setopt(m_pCurl, CURLOPT_WRITEDATA, (void *)&m_strReadBuffer);
+    m_strReadBuffer = "";
+
+    // Perform the request, res will get the return code 
+    res = curl_easy_perform(m_pCurl);  
+    return res;  
 }
 
 //

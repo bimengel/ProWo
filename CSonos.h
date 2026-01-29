@@ -35,6 +35,7 @@ public:
     CSonos(CIOGroup *pIOGroup);
     virtual ~CSonos();
     int GetAnzGroupConfig();
+    int GetAnzFavoriteConfig();
     void SetState(int iNrGroup, int iState);
     void Control(time_t iUhrzeit);
 private:
@@ -44,16 +45,20 @@ private:
     int ReadGroups();
     int ReadFavorites();
     int ReadPlaylists();
-    void LesDatei();    
-    int Execute(string strGroupID, int iState);
+    void LesDatei(); 
+    int ExecuteOperation();  
+    int Execute(int iAktion, int iState);
+    CURLcode CurlPerform(string strData);   
     
 private:
-    int m_iAnzGroupConfig;
     vector<string> m_strGroupConfig;
+    vector<string> m_strFavoriteConfig;
+    vector<string> m_strPlaylistConfig;
     int m_iAnzGroup;
     int m_iAnzPlayer;
-    int m_iAnzFavorites;
-    int m_iStep; // 1: RefreshToken erhalten, 2: Households erhalten, 3: Gruppen gelesen
+    int m_iAnzFavorite;
+    int m_iAnzPlaylist;
+    int m_iStep; 
     int m_iDelay; 
     CURL * m_pCurl;
     char m_curlErrorBuffer[CURL_ERROR_SIZE];    
@@ -61,16 +66,19 @@ private:
     string m_strClientSecret;
     string m_strRefreshToken;
     int m_iHousehold;
-    string m_strToken;
+    string m_strReadBuffer;
+    string m_strUrl;
+    string m_strAuthorization;
     string m_strHousehold;
+    string m_strID;
     CSonosEntity *m_pGroupEntity;
     CSonosEntity *m_pPlayerEntity;
     CSonosEntity *m_pFavoritesEntity;
-    string m_strGroup;
+    CSonosEntity *m_pPlaylistEntity;
     CIOGroup *m_pIOGroup;
     pthread_mutex_t m_mutexSonosFifo;    
+    struct SonosAktionEntity m_SonosAktionEntity;    
     queue<struct SonosAktionEntity> m_SonosFifo;
-    int m_iSonosACID;
 };
 
 class CBerechneSonos : public CBerechneBase 
