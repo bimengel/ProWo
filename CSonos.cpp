@@ -53,7 +53,7 @@ void CSonos::Control(time_t iUhrzeit)
     }
     if(m_iDelay)
     {
-        if(iUhrzeit > m_iDelay + 300) // wenn ein Fehler aufgetreten ist, Initialisierung nach 5 Minuten neustarten
+        if(iUhrzeit > m_iDelay + 3600) // wenn ein Fehler aufgetreten ist, Initialisierung nach 1 Stunde neustarten
         {
             m_iStep = 0;
             m_iDelay = 0;
@@ -61,6 +61,7 @@ void CSonos::Control(time_t iUhrzeit)
     }
     else
     {
+        m_strReadBuffer = "";
         switch(m_iStep) {
         case 0: // Refreshtoken aufrufen
             iError = RefreshToken();
