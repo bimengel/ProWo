@@ -53,7 +53,7 @@ void CSonos::Control(time_t iUhrzeit)
     }
     if(m_iDelay)
     {
-        if(iUhrzeit > m_iDelay + 300) // wenn ein Fehler aufgetreten ist, Initialisierung nach 5 Minuten neustarten
+        if(iUhrzeit > m_iDelay + 3600) // wenn ein Fehler aufgetreten ist, Initialisierung nach 1 Stunde neustarten
         {
             m_iStep = 0;
             m_iDelay = 0;
@@ -61,6 +61,7 @@ void CSonos::Control(time_t iUhrzeit)
     }
     else
     {
+        m_strReadBuffer = "";
         switch(m_iStep) {
         case 0: // Refreshtoken aufrufen
             iError = RefreshToken();
@@ -750,6 +751,7 @@ int CSonos::Execute(int iAktion, int iState)
     bool bSuccess;
     int iErr, j;
     int iRet = 0;
+    bool bPost = true;
 
     m_pCurl = curl_easy_init();
     strData.clear();
@@ -815,8 +817,9 @@ int CSonos::Execute(int iAktion, int iState)
             m_strUrl += "/groupVolume/relative";
             strData = "{\"volumeDelta\":" + to_string(iState) + "}";
             break;        
-        case 100: // Lautsärke lesen
+        case 100: // Lautsärke lesen, nicht mehr in Gebrauch !!
             m_strUrl += "/groupVolume";
+            bPost = false;
             break;
         default:
             strError = "SONOS Paramer, action (" + to_string(iAktion) + "incorrect!";
@@ -825,7 +828,7 @@ int CSonos::Execute(int iAktion, int iState)
             break;
     }
 
-    res = CurlPerform(strData);           
+    res = CurlPerform(strData, bPost);           
     if(res != CURLE_OK)
     {
         strError = "SONOS Verwalt (1) / " + string( m_curlErrorBuffer);
@@ -868,7 +871,7 @@ int CSonos::Execute(int iAktion, int iState)
     return iRet;
 }
 
-CURLcode CSonos::CurlPerform(string strData)
+CURLcode CSonos::CurlPerform(string strData, bool bPost)
 {
     CURLcode res;   
     struct curl_slist* headers = NULL;
@@ -888,7 +891,7 @@ CURLcode CSonos::CurlPerform(string strData)
     curl_easy_setopt(m_pCurl, CURLOPT_HTTPHEADER, headers);
 
     // Data (body)
-    if(strData.empty())
+    if(!bPost)
         curl_easy_setopt(m_pCurl, CURLOPT_HTTPGET, 1L);
     else   
     {

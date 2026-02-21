@@ -48,7 +48,7 @@ private:
     void LesDatei(); 
     int ExecuteOperation();  
     int Execute(int iAktion, int iState);
-    CURLcode CurlPerform(string strData);   
+    CURLcode CurlPerform(string strData, bool bPost);   
     
 private:
     vector<string> m_strGroupConfig;
