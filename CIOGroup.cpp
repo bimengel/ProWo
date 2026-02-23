@@ -2064,7 +2064,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                 else
                     m_pReadFile->Error(64);
             }            
-            else if(strncmp(buf, "TH1SEARCH", 10) == 0 && strlen(buf) == 10)
+            else if(strncmp(buf, "TH1SEARCH", 9) == 0 && strlen(buf) == 9)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
@@ -2092,7 +2092,7 @@ void CIOGroup::ReadConfig(char *pProgramPath)
                     m_pReadFile->Error(64);
 
             }
-            else if(strncmp(buf, "TH1CHANGE", 10) == 0 && strlen(buf) == 10)
+            else if(strncmp(buf, "TH1CHANGE", 9) == 0 && strlen(buf) == 9)
             {
                 if(m_iAnzSensor < m_iMaxAnzSensor)
                 {
