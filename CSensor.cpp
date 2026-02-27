@@ -38,6 +38,7 @@ CSensor::CSensor(int nr)
         m_sStatTemp[i] = 0;
         m_sStatVocSignal[i] = 0;
     }
+    m_iError = 0;
 }
 
 CSensor::~CSensor()
@@ -85,9 +86,63 @@ string CSensor::GetName()
 {
     return m_strName;
 }
-
+int CSensor::GetError()
+{
+    return m_iError;
+}
+string CSensor::GetStrError()
+{
+    return m_strName;
+}
 //
-// CSensorModBus 
+// COperSensor
+//
+COperSensor::COperSensor()
+{
+    m_pSensor = NULL;
+    m_iFct = 0;
+    m_iAnzSensor = 0;
+}
+
+void COperSensor::SetOper(CSensor **pSensor, int iFct, int iAnzSensor)
+{
+    m_pSensor = pSensor;
+    m_iFct = iFct;
+    m_iAnzSensor = iAnzSensor;
+}
+
+string COperSensor::resultString()
+{
+    string str = "";
+    int i;
+
+    switch(m_iFct) {
+        case 1: // Error
+            for(i=0; i < m_iAnzSensor && str.empty(); i++)
+                str = m_pSensor[i]->GetStrError();
+            break;       
+        default:
+            break;
+    }
+    return str;
+}
+int COperSensor::resultInt()
+{
+    int iRet=0, i;
+    CSensor *pSensor;
+
+    switch(m_iFct) {
+        case 1:
+            for(i=0; i < m_iAnzSensor && !iRet; i++)
+                iRet = m_pSensor[i]->GetError();
+            break;
+        default:
+            break;
+    }
+    return iRet;
+}
+//
+// CSensorModBus
 //
 CSensorModBus :: CSensorModBus(int nr) : CSensor (nr)
 {
@@ -138,6 +193,7 @@ int CTQS3 :: LesenStarten()
                 {   
                     sprintf(ptrLog, "TQS3 - Nummer %d  incorrect temperature", m_iNummer);				    ;
                     syslog(LOG_ERR, ptrLog);
+                    ret = 1;
                 }
                 break;
 
@@ -187,7 +243,7 @@ int CTQS3 :: LesenStarten()
             {
                 sprintf(ptrLog, "TQS3 - Nummer %d, Adresse = %d,  error %d", m_iNummer, adr, status);
                 syslog(LOG_ERR, ptrLog);
-                ret = -1;
+                ret = 1;
             }
         }
         // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
@@ -195,6 +251,13 @@ int CTQS3 :: LesenStarten()
     }
     if(status == 0)
         m_pModBusRTUClient->StartSend();
+    if(ret)
+    {
+        m_iTemp = 0;
+        m_iError = 1;
+    }
+    else
+        m_iError = 0;
     return(ret);
 }
 
@@ -357,6 +420,7 @@ int CUltrasonicLevelSensor :: LesenStarten()
                 {   
                     sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d  incorrect distance value", m_iNummer);				    ;
                     syslog(LOG_ERR, ptrLog);
+                    ret = 1;
                 }
                 break;
             case 3:
@@ -372,6 +436,7 @@ int CUltrasonicLevelSensor :: LesenStarten()
                 {   
                     sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d  incorrect temperatur value", m_iNummer);				    ;
                     syslog(LOG_ERR, ptrLog);
+                    ret = 1;
                 }
                 break;                
             case 4: // Adresse ändern
@@ -387,12 +452,20 @@ int CUltrasonicLevelSensor :: LesenStarten()
             int adr = m_pModBusRTUClient->GetAddress();
             sprintf(ptrLog, "UltrasonicLevelSensor - Nummer %d, Adresse = %d,  error %d", m_iNummer, adr, status);
             syslog(LOG_ERR, ptrLog);
-            ret = -1;
+            ret = 1;
         }
         // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
         m_pModBusRTUClient->StartSend();
     }
     if(status == 0)
         m_pModBusRTUClient->StartSend();
+    if(ret)
+    {
+        m_iTemp = 0;
+        m_iParam2 = 0;
+        m_iError = 1;
+    }
+    else
+        m_iError = 0;
     return(ret);
 }

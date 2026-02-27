@@ -39,6 +39,8 @@ public:
     short m_sStatTemp[ANZSTATSENSOR];
     short m_sStatParam2[ANZSTATSENSOR];
     short m_sStatVocSignal[ANZSTATSENSOR];
+    int GetError();
+    string GetStrError();
 	
 protected:
     int m_iTyp; // 1=TQS3, 2=TH1 // 3=ULC (Ultrasonic Level Sensor)
@@ -48,6 +50,7 @@ protected:
 	int m_iParam2;
     int m_iKorrParam2;
     int m_iVocSignal;
+    int m_iError;
     string m_strName;
     
     void PlaceInStat();

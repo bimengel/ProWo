@@ -46,7 +46,7 @@ public:
     string GetString();
 	
 protected:
-    int m_nr;       // wird gebraucht in SetState bei Easywave
+    int m_nr;       // wird gebraucht in SetState bei Easywave, writeMessage
     int m_iTyp;     // gebraucht bei SetState, ist 1 bei HUE und 2 bei Somfy
     int m_IfElse; // 0=immer 1=wenn true, 2=wenn false
     COperBase **m_pOperBase;

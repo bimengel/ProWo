@@ -188,6 +188,7 @@ public:
     void SetAusgStatus(int nr, bool bState);
     int GetAnzSensor();
     CSensor * GetSensorAddress(int nr);
+    CSensor **GetSensor();
     int GetHKAnz();
     CHeizKoerper * GetHKAddress(int nr);
     void Control(bool bAll);

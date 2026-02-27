@@ -859,6 +859,38 @@ void CConfigCalculator::number()
                 else
                     m_pReadFile->Error(107);
             }
+        }
+        else if(strncmp(text, "SENSOR", 6) == 0 && strlen(text) == 6)   
+        {
+            if(m_pIOGroup->GetSensor() != NULL)
+            {
+                if(*m_cPtr++ == ':')
+                {
+                    for(i=0; i < 25; i++)
+                    {
+                        if(isalpha(cur()))
+                        {
+                            text[i] = toupper(cur());
+                            m_cPtr++;
+                        }
+                        else
+                        {   text[i] = 0;
+                            break;
+                        }
+                    }
+                    if(strncmp(text, "ERROR", 5) == 0 && strlen(text) == 5) 
+                        i = 1;
+                    else
+                        m_pReadFile->Error(95);   
+
+                    COperSensor *pOper = new COperSensor;
+                    pOper->setType(1);
+                    pOper->SetOper(m_pIOGroup->GetSensor(), i, m_pIOGroup->GetAnzSensor());
+                    AddOperToList(pOper);
+                }
+                else
+                    m_pReadFile->Error(107);
+            }
             else
                 m_pReadFile->Error(67);
         }    

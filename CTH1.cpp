@@ -43,6 +43,7 @@ int CTH1 :: LesenStarten()
                 {   
                     sprintf(ptrLog, "TH1 - Nummer: %d  Address: %d incorrect temperature", m_iNummer, m_pModBusRTUClient->GetAddress());				    ;
                     syslog(LOG_ERR, ptrLog);
+                    ret = 1;
                 }
                 break;
 
@@ -93,7 +94,7 @@ int CTH1 :: LesenStarten()
             {
                 sprintf(ptrLog, "TH1 - Nummer %d, Adresse = %d,  error %d", m_iNummer, adr, status);
                 syslog(LOG_ERR, ptrLog);
-                ret = -1;
+                ret = 1;
             }
         }
         // Status wird auf 1 gesetzt, die Anfrage wird mit Senden neu gestartet
@@ -101,6 +102,15 @@ int CTH1 :: LesenStarten()
     }
     if(status == 0)
         m_pModBusRTUClient->StartSend();
+    if(ret)
+    {
+        m_iTemp = 0;
+        m_iParam2 = 0;
+        m_iVocSignal = 0;
+        m_iError = 1;
+    }
+    else
+        m_iError = 0;
     return(ret);
 }
 

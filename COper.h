@@ -215,5 +215,18 @@ class COperQUAL : public COperSTHQ
     virtual int resultInt();
 };
 
+class COperSensor : public COperBase
+{
+public:
+    COperSensor();
+    void SetOper(CSensor **pSensor, int iFct, int iAnzSensor);
+	virtual string resultString();
+	virtual int resultInt();
+
+protected:
+    CSensor **m_pSensor;
+	int m_iFct;
+    int m_iAnzSensor;
+};
 
 #endif // _COPER_H_

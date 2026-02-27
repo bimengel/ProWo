@@ -3682,6 +3682,10 @@ CSensor *CIOGroup::GetSensorAddress(int nr)
     return m_pSensor[nr-1];
 }
 
+CSensor **CIOGroup::GetSensor()
+{
+    return m_pSensor;
+}
 int CIOGroup::GetHKAnz()
 {
     if(m_pHeizung != NULL)
