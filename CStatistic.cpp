@@ -237,23 +237,21 @@ struct _yearDaten * CStatistic::AppendYear(struct _yearDaten *pAlt, int endYear)
     if(endYear > m_iAktYear)
     {   
         pNeu = new struct _yearDaten[endYear - m_iFirstYear + 1];
-        i = sizeof(int);
-        for(y=0; y < endYear - m_iFirstYear + 1; y++)
+
+        y = endYear - m_iFirstYear;
+        for(j=0; j < 12; j++)
         {
-            for(j=0; j < 12; j++)
-            {
-                for(i=0; i < 31; i++)
-                    pNeu[y].mon[j].val[i] = 0;
-                pNeu[y].mon[j].average = 0;
-                pNeu[y].mon[j].total = 0;
-                pNeu[y].mon[j].min = 0;
-                pNeu[y].mon[j].max = 0;
-            }   
-            pNeu[y].year = y + m_iFirstYear;
-        }
+            for(i=0; i < 31; i++)
+                pNeu[y].mon[j].val[i] = 0;
+            pNeu[y].mon[j].average = 0;
+            pNeu[y].mon[j].total = 0;
+            pNeu[y].mon[j].min = 0;
+            pNeu[y].mon[j].max = 0;
+        }   
+        pNeu[y].year = endYear;
         if(pAlt != NULL)
         {
-            i = sizeof(struct _yearDaten) * (endYear - m_iFirstYear + 1);
+            i = sizeof(struct _yearDaten) * (endYear - m_iFirstYear);
             memcpy((void *)pNeu, (void *)pAlt, i);
             delete [] pAlt;
         }
