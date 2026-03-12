@@ -41,6 +41,7 @@ ProWo is free software: you can redistribute it and/or modify it
 
 extern struct bcm2835_peripheral spi1;
 extern struct bcm2835_peripheral uart;
+extern pthread_mutex_t m_mutexCommboardSpi;	
 
 //*****************************************************************
 //
@@ -209,8 +210,8 @@ int CRS485ob::Init(int baud, int bits, int stops, char parity, int zykluszeit)
 bool CRS485spi::FinishSend ()
 {
     int ret;
-
-    ret= read_config ();
+ 
+    ret= read_config ();     
     if(ret & 0x4000)
     {
         if(m_bWrite)
@@ -227,7 +228,6 @@ bool CRS485spi::FinishSend ()
     }
     else
         return false;
-
 }
 
 //
@@ -235,13 +235,14 @@ bool CRS485spi::FinishSend ()
 //
 bool CRS485spi::CanSend()
 {   
-    int ret;
+    bool  bRet;
 
-    ret= read_config ();
+    int ret= read_config ();
     if(ret & 0x4000)
-        return true;
+        bRet = true;
     else
-        return false;
+        bRet = false;  
+    return bRet;
 }
 
 bool CRS485spi::CanRead()
@@ -249,7 +250,7 @@ bool CRS485spi::CanRead()
     int ret;
 
     spiset_ChipSelect(SPI_CS_CS1);
-    ret = write_det(0x00, 0x00);
+    ret = write_det(0x00, 0x00);    
     m_cRead = (unsigned char)(ret % 256);
     if(ret & 0x8000)
         return true;
@@ -262,7 +263,13 @@ unsigned char CRS485spi::Read()
     return m_cRead;
 }
 
-
+void CRS485spi::SetMutexCommboardSpi(bool bState)
+{
+    if(bState)
+        pthread_mutex_lock(&m_mutexCommboardSpi);  
+    else
+        pthread_mutex_unlock(&m_mutexCommboardSpi);          
+}
 void CRS485spi::SetRTS(bool bState)
 {
 
@@ -271,7 +278,7 @@ void CRS485spi::SetRTS(bool bState)
         // RTS auf 0 --> Transmit Enable, Receive Disable
         write_det(0x84, 0x00);
     else
-        // RTS auf 1 --> Transmit Disable, Receive Enable
+        // RTS auf 1 --> Transmit Disable, Receive Enable      
         write_det (0x86, 0x00);
 
     CRS485::SetRTS(bState);
@@ -424,6 +431,7 @@ int CRS485::Control()
         m_iState = 1;
         break;
     case SENDING:
+        SetMutexCommboardSpi(true);
         SetRTS(true);
         while(bOK)
         {
@@ -446,8 +454,10 @@ int CRS485::Control()
             else
                 bOK = false;
         }
+        SetMutexCommboardSpi(false);
         break;
     case FINISHSENDING: // warten bis Senden beendet
+        SetMutexCommboardSpi(true);
         if(FinishSend())
         {   int i;
 
@@ -456,8 +466,10 @@ int CRS485::Control()
             SetRTS(false); // Empfang frei schalten
             m_iState = RECEIVING;
         }
+        SetMutexCommboardSpi(false);        
         break;
     case RECEIVING: 
+        SetMutexCommboardSpi(true);     
         while(bOK)
         {
             if(CanRead())
@@ -485,6 +497,7 @@ int CRS485::Control()
                 bOK = false;
             }
         }
+        SetMutexCommboardSpi(false);     
         break;
     default:
         break;

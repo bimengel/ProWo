@@ -18,7 +18,6 @@ extern void LCD_Init();
 extern void LCD_Clear();
 extern void LCD_CursorBlinken(int state);
 extern void LCD_SetCursorPos(int pos);
-extern void LCD_Anzeige(int pos, int len,const char *cptr);
 extern void LCD_AnzeigeUhr(time_t zeit, int pos, int type);
 extern void LCD_AnzeigeZeile1(const char *cptr);
 extern void LCD_AnzeigeZeile2(const char *cptr);
@@ -29,7 +28,7 @@ extern void spiset_ChipSelect(int cs);
 extern void spi_setTA(int state);
 extern string strZweiStellen(int i);
 extern string strDblRunden(double dblValue, int iAnz);
-
+extern pthread_mutex_t m_mutexCommboardSpi;	
 struct bcm2835_peripheral {
 	unsigned long addr_p;
 	int mem_fd;

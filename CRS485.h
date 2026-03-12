@@ -60,6 +60,7 @@ protected:
 	virtual int Write(unsigned char ch) {return 0; };
 	virtual unsigned char Read() { return ' ';};
 	virtual bool FinishSend() { return true; };
+	virtual void SetMutexCommboardSpi(bool bState) { return;};
 	int ControlBaudrate(int baud);
 	
 	unsigned char *m_cEmpfPtr;
@@ -109,6 +110,7 @@ protected:
 	virtual int Write(unsigned char ch);
 	virtual bool FinishSend();
 	virtual unsigned char Read();
+	virtual void SetMutexCommboardSpi(bool bState);	
 	int write_det(int cmd, int data);
 	int read_config();
 

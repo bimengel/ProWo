@@ -42,6 +42,7 @@ struct bcm2835_peripheral gpio;
 struct bcm2835_peripheral bsc1;
 struct bcm2835_peripheral spi1;
 struct bcm2835_peripheral uart;
+pthread_mutex_t m_mutexCommboardSpi;
 
 int map_peripheral(struct bcm2835_peripheral *p);
 void unmap_peripheral(struct bcm2835_peripheral *p);
@@ -110,6 +111,7 @@ void LCD_Anzeige(int pos, int len, const char *cptr)
 {
     int i;
     int cmd = 0x80 + pos -1;
+    pthread_mutex_lock(&m_mutexCommboardSpi);    
     lcd_output_cmd(&spi1, cmd, 50);
     for(i=0; i < len; i++)
     {
@@ -124,6 +126,7 @@ void LCD_Anzeige(int pos, int len, const char *cptr)
         else
             lcd_output_data(&spi1, ' ');
     }
+    pthread_mutex_unlock(&m_mutexCommboardSpi);      
 }
 
 void LCD_AnzeigeZeile1(const char *cptr)
@@ -143,16 +146,20 @@ void LCD_AnzeigeZeile3(const char *cptr)
 
 void LCD_CursorBlinken(int state)
 {
+    pthread_mutex_lock(&m_mutexCommboardSpi);      
     if(state)
         lcd_output_cmd(&spi1, 0x0F, 100);
     else
         lcd_output_cmd(&spi1, 0x0C, 100);
+    pthread_mutex_unlock(&m_mutexCommboardSpi);          
 }
 
 void LCD_SetCursorPos(int pos)
 {
     int cmd = 0x80 + pos -1;
+    pthread_mutex_lock(&m_mutexCommboardSpi);      
     lcd_output_cmd(&spi1, cmd, 50);
+    pthread_mutex_unlock(&m_mutexCommboardSpi);      
 }
 
 void LCD_AnzeigeUhr(time_t zeit, int pos, int art)
