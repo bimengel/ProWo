@@ -78,6 +78,10 @@ void CSonos::Control(time_t iUhrzeit)
             break;
         case 4:
             iError = ReadPlaylists();
+            pthread_mutex_lock(&m_mutexSonosFifo);             
+            while(!m_SonosFifo.empty())
+                m_SonosFifo.pop();
+            pthread_mutex_unlock(&m_mutexSonosFifo);                 
             break;            
         case 5: // Operation ausführen
             iError = ExecuteOperation();
@@ -112,7 +116,9 @@ int CSonos::ExecuteOperation()
         if(m_strID.empty())
         {
             // Gruppe nicht gefunden, also alles neu einlesen!
-            syslog(LOG_ERR, "Sonos Execution: group not found!");
+            str = "Sonos Execution: group (" + str + ") not found!"; 
+            syslog(LOG_ERR, str.c_str());
+            pthread_mutex_unlock(&m_mutexSonosFifo);            
             return 1;
         }    
     }

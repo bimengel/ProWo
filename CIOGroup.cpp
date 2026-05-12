@@ -1758,7 +1758,7 @@ void CIOGroup::PreReadConfig(char *pProgramPath)
                 m_iMaxAnzZaehler++;
             else if((strncmp(buf, "TQS3", 4) == 0 && strlen(buf) == 4)
                     || (strncmp(buf, "TQS3CHANGE", 10) == 0 && strlen(buf) == 10)
-                    || (strncmp(buf, "TQS3SQEARCH", 11) == 0 && strlen(buf) == 11))
+                    || (strncmp(buf, "TQS3SEARCH", 10) == 0 && strlen(buf) == 10))
             {   m_iMaxAnzModBusRTUClient++;
                 m_iMaxAnzSensor++;
             }
